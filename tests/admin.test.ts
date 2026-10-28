@@ -80,3 +80,87 @@ test('Hook fuera de la duración real se rechaza sin guardar',async()=>{
   assert.equal(response.status,422);assert.match(await response.text(),/hook válido/);assert.equal(writes,0);
  });
 });
+
+test('Perfiles: datos públicos validados y lista explícita de campos editables', async()=>{
+ const {validateArtistProfile,validateArtistId}=await import('../src/models/admin.ts');
+ assert.throws(()=>validateArtistId('123'));
+ assert.throws(()=>validateArtistProfile(new URLSearchParams({displayName:'x',bio:''})));
+ assert.throws(()=>validateArtistProfile(new URLSearchParams({displayName:'<script>',bio:''})));
+ assert.throws(()=>validateArtistProfile(new URLSearchParams({displayName:'Artista',bio:'x'.repeat(501)})));
+ assert.deepEqual(validateArtistProfile(new URLSearchParams({displayName:'  Luz  Azul ',bio:'Una historia',role:'superadmin',username:'otro',password:'cambio'})),{display_name:'Luz Azul',bio:'Una historia'});
+});
+test('Artistas: búsqueda, ficha, permisos, CSRF, errores conservan campos y guardado',async()=>{
+ const {validateArtistProfile}=await import('../src/models/admin.ts');
+ const id='22222222-2222-4222-8222-222222222222';
+ const artist={id,username:'luz',display_name:'Luz Azul',bio:'Cantante'};
+ let saved:unknown;
+ const adminModel={
+  artists:async()=>[artist],
+  artist:async(target:string)=>target===id?artist:undefined,
+  saveArtist:async(_id:string,fields:URLSearchParams)=>{saved=validateArtistProfile(fields);return true;}
+ } as unknown as AdminModel;
+ const model={list:async()=>[]} as unknown as ProjectModel;
+ await withServer({adminModel,model},async base=>{
+  const path='/admin/artists/'+id;
+  for(const route of ['/admin/artists',path,'/admin/projects']){
+   assert.equal((await request(base,route,'artist')).status,403);
+   assert.equal((await request(base,route,'')).status,303);
+  }
+  assert.match(await(await request(base,'/admin/artists')).text(),/Luz Azul/);
+  assert.doesNotMatch(await(await request(base,'/admin/artists?q=SinCoincidencia')).text(),/Editar perfil y ver proyectos/);
+  assert.equal((await request(base,'/admin/artists/invalido')).status,404);
+  assert.equal((await request(base,'/admin/artists/33333333-3333-4333-8333-333333333333')).status,404);
+  const page=await(await request(base,path)).text();
+  assert.match(page,/name="displayName"/);assert.match(page,/name="bio"/);
+  assert.doesNotMatch(page,/name="(role|password|email|username)"/);
+  const fields={displayName:'Nueva Luz',bio:'<texto seguro>',csrf:'token',role:'superadmin'};
+  assert.equal((await request(base,path,'artist',fields)).status,403);
+  assert.equal((await request(base,path,'admin',{...fields,csrf:'bad'})).status,403);
+  assert.equal(saved,undefined);
+  const invalid=await request(base,path,'admin',{...fields,displayName:'x'});
+  assert.equal(invalid.status,422);assert.match(await invalid.text(),/&lt;texto seguro&gt;/);
+  assert.equal(saved,undefined);
+  const result=await request(base,path,'admin',fields);
+  assert.equal(result.status,303);assert.equal(result.headers.get('location'),path+'?saved=1');
+  assert.deepEqual(saved,{display_name:'Nueva Luz',bio:'<texto seguro>'});
+ });
+});
+test('Proyectos administrativos: revisar audio, editar sin transferir autor y eliminar con confirmación y CSRF',async()=>{
+ const id='22222222-2222-4222-8222-222222222222';
+ const artist={id,username:'luz',display_name:'Luz Azul',bio:''};
+ const project={id:7,ownerId:id,genreId:1,instrumentId:2,collaborationId:4,title:'Demo de Luz',genre:'Jazz',bpm:120,musicalKey:'La menor',need:'Coro',description:'Demo',status:'Borrador',audioDuration:60,audioName:'demo.mp3',hookStart:10,hookEnd:20,updatedAt:''};
+ const edits:ProjectInput[]=[];let deleted=0;let filter:string|undefined;
+ const adminModel={artists:async()=>[artist]} as unknown as AdminModel;
+ const model={
+  list:async(_user:unknown,owner?:string)=>{filter=owner;return [project];},
+  find:async(id:number)=>id===7?project:undefined,
+  audio:async()=>new Uint8Array([1,2,3,4]),
+  update:async(_id:number,input:ProjectInput)=>{edits.push(input);return true;},
+  delete:async()=>{deleted++;return true;}
+ } as unknown as ProjectModel;
+ await withServer({adminModel,model},async base=>{
+  assert.match(await(await request(base,'/admin/projects?artist='+id)).text(),/Luz Azul/);assert.equal(filter,id);
+  for(const route of ['/admin/projects/7','/admin/projects/7/edit','/admin/projects/7/delete','/admin/projects/7/audio']) assert.equal((await request(base,route,'artist')).status,403);
+  assert.equal((await request(base,'/admin/projects/99')).status,404);
+  const detail=await(await request(base,'/admin/projects/7')).text();
+  assert.match(detail,/src="\/admin\/projects\/7\/audio"/);
+  const range=await fetch(base+'/admin/projects/7/audio',{headers:{Cookie:'entra_session=admin',Range:'bytes=1-2'}});
+  assert.equal(range.status,206);assert.deepEqual([...new Uint8Array(await range.arrayBuffer())],[2,3]);
+  const edit=await(await request(base,'/admin/projects/7/edit')).text();
+  assert.match(edit,/action="\/admin\/projects\/7\/edit"/);
+  const fields={...selection,title:'Demo editada',bpm:'120',musicalKey:'La menor',status:'Borrador',hookStart:'10',hookEnd:'20',csrf:'token',ownerId:'inventado'};
+  assert.equal((await request(base,'/admin/projects/7/edit','admin',{...fields,csrf:'bad'})).status,403);
+  assert.equal(edits.length,0);
+  assert.equal((await request(base,'/admin/projects/7/edit','admin',{...fields,bpm:'999'})).status,422);
+  const update=await request(base,'/admin/projects/7/edit','admin',fields);
+  assert.equal(update.status,303);assert.equal(update.headers.get('location'),'/admin/projects?result=updated');
+  assert.equal(edits[0].title,'Demo editada');assert.equal(edits[0].audio,undefined);assert.equal('ownerId' in edits[0],false);
+  const confirmation=await(await request(base,'/admin/projects/7/delete')).text();
+  assert.match(confirmation,/href="\/admin\/projects">Conservar proyecto/);assert.equal(deleted,0);
+  assert.equal((await request(base,'/admin/projects/7/delete','artist',{csrf:'token'})).status,403);
+  assert.equal((await request(base,'/admin/projects/7/delete','admin',{csrf:'bad'})).status,403);
+  assert.equal(deleted,0);
+  const removal=await request(base,'/admin/projects/7/delete','admin',{csrf:'token'});
+  assert.equal(removal.status,303);assert.equal(removal.headers.get('location'),'/admin/projects?result=deleted');assert.equal(deleted,1);
+ });
+});

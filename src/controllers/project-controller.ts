@@ -145,6 +145,7 @@ export async function projectController(
   token: string,
   user: AuthUser,
   catalogs: CatalogModel = new CatalogModel(),
+  basePath = '/projects',
 ): Promise<void> {
   const path = url.pathname;
   const method = request.method;
@@ -173,7 +174,7 @@ export async function projectController(
 
   // Muestra el formulario de creación.
   if (method === 'GET' && path === '/projects/new') {
-    return html(response, formView(token, undefined, '', undefined, await catalogs.list()));
+    return html(response, formView(token, undefined, '', undefined, await catalogs.list(), basePath));
   }
 
   // Ruta de reproducción del audio de un proyecto.
@@ -316,14 +317,14 @@ export async function projectController(
   // Presenta el detalle, el formulario de edición o la confirmación.
   if (method === 'GET' && project && match) {
     if (match[2] === 'delete') {
-      return html(response, deleteView(project, token));
+      return html(response, deleteView(project, token, basePath));
     }
 
     if (match[2] === 'edit') {
-      return html(response, formView(token, project, '', undefined, await catalogs.list()));
+      return html(response, formView(token, project, '', undefined, await catalogs.list(), basePath));
     }
 
-    return html(response, detailView(project, token));
+    return html(response, detailView(project, token, basePath));
   }
 
   const isCreate =
@@ -360,7 +361,7 @@ export async function projectController(
           return html(response, 'Proyecto no encontrado', 404);
         }
 
-        return redirect(response, '/projects?result=deleted');
+        return redirect(response, basePath + '?result=deleted');
       }
 
       // Solo se permite crear o editar mediante las rutas previstas.
@@ -429,13 +430,13 @@ export async function projectController(
 
       return redirect(
         response,
-        `/projects?result=${project ? 'updated' : 'created'}`,
+        `${basePath}?result=${project ? 'updated' : 'created'}`,
       );
     } catch (error) {
       if (error instanceof ValidationError) {
         return html(
           response,
-          formView(token, project, error.message, fields, await catalogs.list()),
+          formView(token, project, error.message, fields, await catalogs.list(), basePath),
           422,
         );
       }

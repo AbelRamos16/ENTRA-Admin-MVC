@@ -52,7 +52,7 @@ export function createApp(deps: { model?: ProjectModel; userModel?: UserModel; a
   });
   app.use('/admin', async (req, res) => {
     if (res.locals.user.role !== 'superadmin') { res.status(403).send('Acceso exclusivo del administrador.'); return; }
-    await adminController(req, res, new URL(req.originalUrl, 'http://localhost'), adminModel, res.locals.user, res.locals.session.csrfToken);
+    await adminController(req, res, new URL(req.originalUrl, 'http://localhost'), adminModel, res.locals.user, res.locals.session.csrfToken, model, catalogModel);
   });
   app.use(async (req, res) => {
     await projectController(req, res, new URL(req.originalUrl, 'http://localhost'), model, res.locals.session.csrfToken, res.locals.user, catalogModel);

@@ -252,7 +252,7 @@ function decodeBytea(
 
 export class ProjectModel {
   // Consulta los proyectos del usuario o todos si es superadmin.
-  async list(user: AuthUser): Promise<Project[]> {
+  async list(user: AuthUser, ownerId?: string): Promise<Project[]> {
     let query = supabaseAdmin
       .from('projects')
       .select(
@@ -262,6 +262,8 @@ export class ProjectModel {
 
     if (!isSuperadmin(user)) {
       query = query.eq('owner_id', user.id);
+    } else if (ownerId) {
+      query = query.eq('owner_id', ownerId);
     }
 
     const { data, error } = await query;
