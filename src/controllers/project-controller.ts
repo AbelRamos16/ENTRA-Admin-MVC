@@ -1,3 +1,4 @@
+import { CatalogModel, resolveSelection } from '../models/catalog.ts';
 
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
@@ -143,6 +144,7 @@ export async function projectController(
   model: ProjectModel,
   token: string,
   user: AuthUser,
+  catalogs: CatalogModel = new CatalogModel(),
 ): Promise<void> {
   const path = url.pathname;
   const method = request.method;
@@ -171,7 +173,7 @@ export async function projectController(
 
   // Muestra el formulario de creación.
   if (method === 'GET' && path === '/projects/new') {
-    return html(response, formView(token));
+    return html(response, formView(token, undefined, '', undefined, await catalogs.list()));
   }
 
   // Ruta de reproducción del audio de un proyecto.
@@ -318,7 +320,7 @@ export async function projectController(
     }
 
     if (match[2] === 'edit') {
-      return html(response, formView(token, project));
+      return html(response, formView(token, project, '', undefined, await catalogs.list()));
     }
 
     return html(response, detailView(project, token));
@@ -369,7 +371,13 @@ export async function projectController(
         return html(response, 'Página no encontrada', 404);
       }
 
-      const input = validateProject(fields);
+      const selection = resolveSelection(await catalogs.list(), fields);
+      fields.set('genre', selection.genre.name);
+      fields.set('need', selection.collaboration.name + ' · ' + selection.instrument.name);
+      const input = validateProject(fields, [selection.genre.name]);
+      input.genreId = selection.genre.id;
+      input.instrumentId = selection.instrument.id;
+      input.collaborationId = selection.collaboration.id;
 
       input.audio = parsed.file
         ? await validateAudio(parsed.file)
@@ -427,7 +435,7 @@ export async function projectController(
       if (error instanceof ValidationError) {
         return html(
           response,
-          formView(token, project, error.message, fields),
+          formView(token, project, error.message, fields, await catalogs.list()),
           422,
         );
       }

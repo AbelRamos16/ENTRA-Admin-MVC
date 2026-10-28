@@ -84,3 +84,22 @@ h1,h2,.empty h3,.welcome__copy h2{font-family:'Anton',sans-serif;font-weight:400
 .admin-panel__project{padding:24px;border:1px solid var(--line);border-radius:18px;margin:20px 0;background:var(--surface)}
 .admin-panel__form{display:grid;grid-template-columns:1fr 1.4fr auto;gap:18px;align-items:end;margin-top:20px}
 @media(max-width:800px){.admin-panel__form{grid-template-columns:1fr}}
+
+/* Administración de catálogos: componentes BEM sobre los tokens de ENTRA. */
+.catalog-panel { margin-block: 3rem; scroll-margin-top: 2rem; }
+.catalog-panel__heading, .catalog-panel__tabs { display:flex; gap:1rem; align-items:center; flex-wrap:wrap; }
+.catalog-panel__heading { justify-content:space-between; margin-bottom:1.25rem; }
+.catalog-panel__create, .catalog-panel__item { background:#222a36; border:1px solid #465263; border-radius:24px; padding:24px; }
+.catalog-panel__create { margin-block:1.25rem; }
+.catalog-panel__form { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:1rem; align-items:end; }
+.catalog-panel__form .button { min-height:52px; }
+.catalog-panel__list { display:grid; gap:12px; }
+.catalog-panel__item summary { cursor:pointer; display:flex; flex-wrap:wrap; align-items:center; gap:12px; min-height:44px; font-weight:600; }
+.catalog-panel__item summary::before { content:'+'; color:#ffc65c; }
+.catalog-panel__item[open] summary::before { content:'−'; }
+.catalog-panel__item[open] .catalog-panel__form { margin-top:24px; }
+.catalog-panel__tabs .button { transition:background-color 150ms, color 150ms; }
+.catalog-panel__form button:active { scale:0.96; }
+.catalog-panel__item summary:focus-visible { outline:3px solid #ffc65c; outline-offset:4px; }
+@media(max-width:600px) { .catalog-panel__form { grid-template-columns:1fr; } .catalog-panel__create, .catalog-panel__item { padding:20px; } }
+@media(prefers-reduced-motion:reduce) { .catalog-panel__tabs .button { transition:none; } .catalog-panel__form button:active { scale:1; } }

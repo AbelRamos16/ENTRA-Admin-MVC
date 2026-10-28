@@ -1,3 +1,4 @@
+import { CatalogModel } from './models/catalog.ts';
 import express from 'express';
 import type { ErrorRequestHandler } from 'express';
 import { createServer } from 'node:http';
@@ -15,9 +16,10 @@ function sessionCookie(header = '') {
   try { return part ? decodeURIComponent(part.slice('entra_session='.length)) : undefined; }
   catch { return undefined; }
 }
-export function createApp(deps: { model?: ProjectModel; userModel?: UserModel; adminModel?: AdminModel } = {}) {
+export function createApp(deps: { model?: ProjectModel; userModel?: UserModel; adminModel?: AdminModel; catalogModel?: CatalogModel } = {}) {
   const model = deps.model ?? new ProjectModel();
   const userModel = deps.userModel ?? new UserModel();
+  const catalogModel = deps.catalogModel ?? new CatalogModel();
   const adminModel = deps.adminModel ?? new AdminModel();
   const app = express();
   app.disable('x-powered-by');
@@ -27,7 +29,7 @@ export function createApp(deps: { model?: ProjectModel; userModel?: UserModel; a
     res.setHeader('X-Content-Type-Options', 'nosniff'); res.setHeader('Cache-Control', 'no-store'); next();
   });
   app.get('/health', (_req, res) => { res.json({ status: 'ok' }); });
-  for (const name of ['onboarding', 'password-feedback', 'project-audio']) {
+  for (const name of ['onboarding', 'password-feedback', 'project-audio', 'catalog-selects']) {
     app.get(`/${name}.js`, (_req, res) => {
       res.type('text/javascript').send(stripTypeScriptTypes(readFileSync(new URL(`./client/${name}.ts`, import.meta.url), 'utf8')));
     });
@@ -53,7 +55,7 @@ export function createApp(deps: { model?: ProjectModel; userModel?: UserModel; a
     await adminController(req, res, new URL(req.originalUrl, 'http://localhost'), adminModel, res.locals.user, res.locals.session.csrfToken);
   });
   app.use(async (req, res) => {
-    await projectController(req, res, new URL(req.originalUrl, 'http://localhost'), model, res.locals.session.csrfToken, res.locals.user);
+    await projectController(req, res, new URL(req.originalUrl, 'http://localhost'), model, res.locals.session.csrfToken, res.locals.user, catalogModel);
   });
   const errors: ErrorRequestHandler = (err, _req, res, _next) => {
     console.error('Error de aplicación:', err instanceof Error ? err.message : 'Error desconocido');

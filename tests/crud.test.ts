@@ -1,3 +1,4 @@
+import { catalogFields } from './catalog-fixture.ts';
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -146,6 +147,7 @@ test('CRUD HTTP, validación, escape HTML, CSRF y persistencia', async () => {
     const token = tokenMatch[1];
 
     const fields = new URLSearchParams({
+      ...await catalogFields(),
       csrf: token,
       title: '<script>alert(1)</script>',
       genre: 'Indie',

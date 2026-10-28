@@ -1,19 +1,40 @@
 # ENTRA · Administración MVC
 
-ENTRA organiza proyectos musicales y el fragmento de audio donde se necesita colaboración. Esta entrega utiliza **TypeScript, Express 5 sobre Node.js 24 y Supabase**.
+ENTRA conecta ideas musicales con lo que les falta para avanzar. Los artistas organizan proyectos, adjuntan una demo y marcan el hook donde necesitan colaboración.
 
-## Funcionalidades
+**TypeScript · Express 5 · Node.js 24 · Supabase**
 
-- Registro con usuario, email y contraseña; Login y cierre de sesión POST con CSRF.
-- Artistas: CRUD, lectura separada, demo MP3 de hasta 10 MB y selección visual del hook.
-- Superadmin: consulta todos los proyectos y reasigna su artista responsable en `/admin`.
-- El artista se elige desde un dropdown cargado de `profiles`; nunca se escribe manualmente su ID.
-- Motivo obligatorio de 5–300 caracteres, comprobación backend del rol y destino, y detección de formularios desactualizados.
-- Reasignación e historial en una única transacción SQL. El artista anterior pierde acceso y el nuevo lo obtiene.
+## Aplicación publicada
 
-## Instalación
+[ENTRA](https://entra-admin-mvc-i5c1.vercel.app/login)
 
-Requiere Node >=24.16.0 <25. Dentro del repositorio:
+La URL corresponde al proyecto de producción. Los cambios locales requieren push y despliegue para aparecer allí.
+
+## Qué hace esta entrega
+
+- Registro, Login, cierre de sesión y rutas protegidas.
+- CRUD de proyectos con lectura separada, demo MP3 y selección visual del hook.
+- Administración exclusiva para cuentas con `profiles.role = 'superadmin'`.
+- Catálogos de géneros, instrumentos y tipos de colaboración: crear, consultar, editar y desactivar/reactivar.
+- El artista elige género e instrumento desde la base. Al cambiar de instrumento, el selector de colaboración muestra solo las opciones relacionadas: Voz → Coro / Verso; Bajo → Línea de bajo.
+- Desactivar una opción la retira de nuevos formularios; conserva los proyectos existentes. Para editar un proyecto con opciones desactivadas se seleccionan opciones activas.
+- La administración ya no transfiere proyectos ni solicita un motivo. La migración conserva los datos del historial anterior y retira el permiso de ejecución de la función de reasignación. No revierte transferencias realizadas.
+
+## Preparación de Supabase: antes de desplegar
+
+Se utiliza la base existente del grupo: Supabase Auth, `profiles`, `projects`, `app_sessions` y el trigger de creación del perfil deben existir.
+
+1. Abrir `supabase/migrations/20261028_music_catalogs.sql`.
+2. Copiar el archivo completo en Supabase → SQL Editor y ejecutarlo.
+3. La migración crea `entra_catalog_items`, datos iniciales, claves foráneas y triggers de validación. Es transaccional y repetible. No borra proyectos.
+4. Las nuevas columnas de `projects` son `genre_id`, `instrument_id` y `collaboration_id`. Los proyectos anteriores mantienen descripción, necesidad, audio, hook y artista. El género se vincula cuando hay coincidencia; los nuevos selectores se completan al editar.
+5. La cuenta administrativa se configura en `profiles.role` como `superadmin`. El registro público no permite elegir ese rol.
+
+La migración anterior `20261028_admin_assignments.sql` es histórica y no es necesaria para instalar los nuevos catálogos.
+
+## Instalación local
+
+Requiere Node >=24.16.0 <25.
 
 ```powershell
 npm ci
@@ -21,77 +42,73 @@ Copy-Item .env.example .env
 npm run dev
 ```
 
-Completar `.env` con `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` y `SUPABASE_ANON_KEY`. No compartir ni versionar claves. `PORT` predeterminado 3000; `HOST` predeterminado 127.0.0.1. La aplicación carga `.env` mediante dotenv.
+Completar `.env` con `SUPABASE_URL`, `SUPABASE_ANON_KEY` (publishable) y `SUPABASE_SERVICE_ROLE_KEY` (secret, solo servidor). Nunca versionar claves. Puerto local 3000, host 127.0.0.1.
 
-**Base existente de Julián:** deben existir Supabase Auth, `profiles`, `projects`, `app_sessions` y el trigger que genera perfiles al registrar usuarios. Este cambio no migra los datos antiguos de SQLite ni crea el esquema previo.
+## Arquitectura y buenas prácticas
 
-Ejecutar en SQL Editor de Supabase `supabase/migrations/20261028_admin_assignments.sql`. Añade la tabla `entra_project_assignments` y la función transaccional `entra_assign_project`. No altera registros ni concede roles a cuentas. La pantalla administrativa necesita esta migración.
+| Capa | Archivos | Responsabilidad |
+|---|---|---|
+| Entrada Express | `src/server.ts` | Sesión, autorización, rutas y errores |
+| Controladores | `src/controllers/` | Solicitudes, CSRF, validación y respuestas |
+| Modelos | `src/models/` | Persistencia Supabase y reglas del dominio |
+| Vistas | `src/views/` | HTML y formularios compartidos |
+| Cliente | `src/client/` | Onda, onboarding y selectores dependientes |
+| Recursos | `public/` | Logo, fuentes y estilos BEM |
+| Base | `supabase/migrations/` | Esquema, relaciones y restricciones |
 
-El grupo debe disponer de una cuenta cuyo `profiles.role` sea `superadmin`. El registro público no permite elegir ese rol. El responsable de Supabase debe configurar la cuenta administrativa que acuerden.
+KISS: una aplicación Express con formularios HTML. DRY: un modelo de catálogos y un componente de formulario para los tres tipos; `resolveSelection` centraliza la validación de relaciones. BEM: `catalog-panel__form`, `catalog-panel__heading`, `project-card__body`. MVC separa presentación, solicitudes y persistencia.
 
-## Arquitectura
+Node.js sigue siendo el runtime; Express procesa las solicitudes. Los controladores leen streams con límites para no consumir el MP3 con un parser global.
 
-- `src/server.ts`: aplicación Express, estáticos, rutas públicas, middleware de sesión, autorización administrativa y tratamiento de errores.
-- `src/controllers/`: controladores de autenticación, proyectos y administración.
-- `src/models/`: persistencia Supabase y reglas de validación.
-- `src/views/`: HTML renderizado por servidor y componentes compartidos.
-- `src/client/`: onboarding, requisitos de contraseña y onda real del MP3.
-- `public/`: recursos gráficos, fuentes locales y estilos BEM.
-- `supabase/migrations/`: migración administrativa.
+## Validación backend y relaciones
 
-Se mantiene `createServer(app)` para compatibilidad de las pruebas y el transporte HTTP; Express procesa las solicitudes. Node.js sigue siendo el runtime. Los controladores leen los formularios y multipart con límites; no hay un parser global que consuma el audio antes de validar.
+- BPM entero de 40 a 240, título, tonalidad y estado comprobados antes de guardar.
+- MP3 inspeccionado con music-metadata; hook dentro de la duración real: `0 <= inicio < fin <= duración`.
+- Nombres de catálogo de 2–60 caracteres, sin etiquetas/caracteres de control y sin duplicados en el mismo tipo e instrumento.
+- El servidor consulta la base para validar que los IDs existan, estén activos y sean del tipo correcto. Coro + Bajo se rechaza incluso manipulando el HTML o enviando POST manual.
+- El tipo de colaboración referencia a su instrumento mediante `parent_id`. Los proyectos referencian las opciones mediante claves foráneas.
+- PostgreSQL repite la comprobación de tipo, actividad y relación mediante triggers y sincroniza los textos de género/necesidad al guardar. Una colaboración utilizada no puede moverse a otro instrumento.
+- Catálogos con RLS y acceso de escritura solo desde backend. El servidor exige superadmin y CSRF para cualquier cambio administrativo.
 
-KISS: una aplicación Express y formularios HTML. DRY: layout, formulario compartido, validación de asignación centralizada. BEM: `admin-panel__project`, `admin-panel__form`, `project-card__body`. MVC separa rutas, acceso a datos y presentación.
-
-## Validaciones del core
-
-El servidor valida título, género, estado, BPM entero 40–240 y tonalidad obligatoria. El MP3 se inspecciona con music-metadata. Si hay audio, el hook debe cumplir `0 <= inicio < fin <= duración real`. No basta alterar atributos HTML para saltarse la validación.
-
-La reasignación valida sesión, rol superadmin, CSRF, formato del ID, motivo y artista distinto. La función SQL vuelve a consultar que actor sea superadmin y destino sea una cuenta artista registrada; bloquea el proyecto y compara su autoría con el formulario. Solo guarda la modificación si también puede insertar el historial. La función solo es ejecutable con service_role en backend; anon y authenticated no pueden invocarla directamente.
+Los textos de género/necesidad se conservan como instantánea para visualizar proyectos anteriores; las referencias nuevas son IDs reales. Renombrar el catálogo no reescribe la ficha histórica hasta que el proyecto vuelve a guardarse.
 
 ## Pruebas
 
 ```powershell
 npm run typecheck
 npm run test:local
-npm test
 ```
 
-`test:local` ejecuta `tests/admin.test.ts` con modelos sustitutos: no toca Supabase. Necesita variables con formato válido para cargar la configuración, pero admite valores ficticios. Verifica middleware Express, sesión, permisos, CSRF, selector, escape HTML, motivo y validación de BPM.
+Las cuatro pruebas locales usan modelos sustitutos y no modifican Supabase. Comprueban acceso, CSRF, selectores, campos manipulados, creación/actualización de catálogos, persistencia de selección y hook fuera de duración. Para cargar configuración admiten variables ficticias con formato válido.
 
-`npm test` incluye las pruebas de integración heredadas que crean usuarios y proyectos temporales en el Supabase configurado. Ejecutarlas en un proyecto de prueba, no sobre datos de presentación. La migración administrativa y su transacción deben verificarse también contra Supabase antes del video.
+`npm test` incluye pruebas de integración que crean usuarios y proyectos temporales en el Supabase configurado. Usar una base de prueba con la migración aplicada. No se ejecutaron contra la base del grupo en esta actualización.
 
-## Despliegue en Render
+La migración se probó además en PostgreSQL aislado (PGlite): repetición, datos anteriores, duplicados, referencia inválida, colaboración de otro instrumento y desactivación. Pendiente aplicar y comprobar la versión nueva en Supabase/Vercel reales.
 
-El repositorio incluye `render.yaml`. Conectar el repositorio a Render como Web Service o Blueprint y configurar las tres variables Supabase en el panel, sin pegarlas en Git. Configuración: Node 24.16.0, build `npm ci`, start `npm start`, `HOST=0.0.0.0`, `NODE_ENV=production`. Render suministra `PORT`. Health check `/health` confirma el proceso, no la conexión a la base.
+## Despliegue en Vercel
 
-Guía oficial: https://render.com/docs/deploy-node-express-app
+1. Ejecutar primero la migración nueva en Supabase.
+2. Subir los cambios al repositorio ENTRA-Admin-MVC, rama main.
+3. Usar Framework Preset Express y raíz del repositorio; sin directorio de salida de frontend.
+4. Configurar las tres variables Supabase para Production. Marcar la clave secreta como Secret.
+5. Desplegar y comprobar Login, CRUD, administración y permisos en HTTPS.
 
-**URL pública:** pendiente de publicar. No se considera desplegado por arrancar en localhost. Tras publicar, comprobar registro, Login, audio, administración y permisos en la URL HTTPS.
+`vercel.json` instala dependencias de desarrollo para el compilador e incluye los scripts de `src/client/`. TypeScript está fijado en 5.9.3; `rewriteRelativeImportExtensions` convierte imports .ts a .js. El servidor exporta Express por defecto.
 
-## Video de la entrega
+Vercel limita el tamaño de las solicitudes de las funciones: el límite local de MP3 de 10 MB no implica que la plataforma lo admita. Para archivos mayores a su límite se necesita subida directa a Storage o un servidor adecuado.
 
-1. Abrir URL pública y mostrar acceso bloqueado sin sesión.
-2. Login de administrador y pantalla `/admin` con proyectos.
-3. Mostrar el dropdown de artistas, cambiar responsable con un motivo y consultar historial.
-4. Mostrar en el código la validación backend y el control transaccional SQL.
-5. Demostrar rechazo de un dato inválido (hook fuera de duración o artista inexistente mediante una prueba, no solo validación del navegador).
-6. Mostrar cuenta de artista sin acceso administrativo, repositorio y README.
+También se conserva `render.yaml` como alternativa de servidor. No se requieren ambos despliegues.
 
-## Estado de esta implementación
+## Demostración para la entrega
 
-Express y administración implementados. TypeScript y pruebas locales verificados. Migración SQL suministrada para aplicar en el Supabase del grupo; ejecución real de la función y despliegue público pendientes. Las claves no se incluyen.
+1. Abrir la URL pública y mostrar que sin sesión no se accede a proyectos ni administración.
+2. Entrar como administrador; crear un género y un instrumento.
+3. Crear una colaboración eligiendo el instrumento desde un dropdown.
+4. Entrar como artista y crear un proyecto con esas opciones. Cambiar de instrumento y mostrar el filtrado.
+5. Mostrar en el código la validación backend de BPM/hook y de referencias. Una cuenta artista recibe 403 en /admin.
+6. Editar o desactivar una opción y explicar que no se borran proyectos.
+7. Mostrar repositorio y README. Grabar y adjuntar el video solicitado.
 
-Integrantes: Abel Ramos y Julián Pacheco.
+## Integrantes
 
-## Vercel
-
-La compilación usa TypeScript 5.9.3 fijado en el lockfile y `typeRoots` explícito a `node_modules/@types`. Esta configuración evita depender de la resolución de tipos del compilador nativo TypeScript 7 durante el empaquetado. Ante TS2688, comprobar que el despliegue use este commit y que el log muestre TypeScript 5.9.3; las pruebas locales no sustituyen la comprobación del despliegue en Vercel.
-
-El punto de entrada `src/server.ts` exporta Express por defecto; el listener solo arranca al ejecutar el archivo directamente. `vercel.json` fuerza `npm ci --include=dev` para disponer de los tipos Node y Express al compilar. Mantener Framework Preset Express y Root Directory en la raíz del repositorio. Configurar SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY y SUPABASE_ANON_KEY en el panel de variables de Vercel; no publicar claves. Si existe un Install Command personalizado en el panel, usar también `npm ci --include=dev`. No configurar una carpeta de salida de frontend para esta aplicación backend.
-
-Vercel sirve `public/` mediante su CDN. Los MP3 se reciben en una función: comprobar sus límites de tamaño antes de considerar válidas las cargas de hasta 10 MB del modo local; para cargas mayores al límite de la plataforma debe implementarse subida directa a Storage o usar un servidor adecuado.
-
-Documentación: https://vercel.com/docs/frameworks/backend/express
-
-Los imports relativos TypeScript se convierten a .js mediante rewriteRelativeImportExtensions al compilar. Vercel incluye también src/client/** porque el servidor lee estos archivos para servir los scripts del navegador. Verificado localmente el arranque compilado y las rutas /health, /login y /register (HTTP 200).
+Abel Ramos y Julián Pacheco · Grupo 9 · ISWZ 3101 · NRC 5489

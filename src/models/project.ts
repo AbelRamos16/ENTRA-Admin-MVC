@@ -20,6 +20,9 @@ export const statuses = [
 ];
 
 export type ProjectInput = {
+  genreId?: number | null;
+  instrumentId?: number | null;
+  collaborationId?: number | null;
   title: string;
   genre: string;
   bpm: number;
@@ -41,6 +44,9 @@ export type Project = Omit<ProjectInput, 'audio'> & {
 };
 
 type ProjectRow = {
+  genre_id: number | null;
+  instrument_id: number | null;
+  collaboration_id: number | null;
   id: number;
   owner_id: string;
   title: string;
@@ -86,6 +92,7 @@ function parseOptionalNumber(
 
 export function validateProject(
   fields: URLSearchParams,
+  allowedGenres: string[] = genres,
 ): ProjectInput {
   const title = (fields.get('title') ?? '').trim();
   const genre = (fields.get('genre') ?? '').trim();
@@ -101,7 +108,7 @@ export function validateProject(
     );
   }
 
-  if (!genres.includes(genre)) {
+  if (!allowedGenres.includes(genre)) {
     throw new ValidationError('Selecciona un género musical válido.');
   }
 
@@ -176,9 +183,10 @@ export function validateProject(
 }
 
 function throwIfError(
-  error: { message: string } | null,
+  error: { message: string; code?: string } | null,
   action: string,
 ): void {
+  if (error && ['23514', '23503'].includes(error.code ?? '')) throw new ValidationError('Las opciones del catálogo cambiaron. Revisa tus selecciones antes de guardar.');
   if (error) {
     throw new Error(`${action}: ${error.message}`);
   }
@@ -187,6 +195,9 @@ function throwIfError(
 function mapProject(row: ProjectRow): Project {
   return {
     id: Number(row.id),
+    genreId: row.genre_id,
+    instrumentId: row.instrument_id,
+    collaborationId: row.collaboration_id,
     ownerId: row.owner_id,
     title: row.title,
     genre: row.genre,
@@ -245,7 +256,7 @@ export class ProjectModel {
     let query = supabaseAdmin
       .from('projects')
       .select(
-        'id, owner_id, title, genre, bpm, musical_key, need, description, status, updated_at, audio_name, audio_duration, hook_start, hook_end',
+        'genre_id, instrument_id, collaboration_id, id, owner_id, title, genre, bpm, musical_key, need, description, status, updated_at, audio_name, audio_duration, hook_start, hook_end',
       )
       .order('updated_at', { ascending: false });
 
@@ -272,7 +283,7 @@ export class ProjectModel {
     let query = supabaseAdmin
       .from('projects')
       .select(
-        'id, owner_id, title, genre, bpm, musical_key, need, description, status, updated_at, audio_name, audio_duration, hook_start, hook_end',
+        'genre_id, instrument_id, collaboration_id, id, owner_id, title, genre, bpm, musical_key, need, description, status, updated_at, audio_name, audio_duration, hook_start, hook_end',
       )
       .eq('id', id);
 
@@ -327,6 +338,9 @@ export class ProjectModel {
 
     const row = {
       owner_id: user.id,
+      genre_id: project.genreId ?? null,
+      instrument_id: project.instrumentId ?? null,
+      collaboration_id: project.collaborationId ?? null,
       title: project.title,
       genre: project.genre,
       bpm: project.bpm,
@@ -371,6 +385,9 @@ export class ProjectModel {
     }
 
     const changes: Record<string, unknown> = {
+      genre_id: project.genreId ?? null,
+      instrument_id: project.instrumentId ?? null,
+      collaboration_id: project.collaborationId ?? null,
       title: project.title,
       genre: project.genre,
       bpm: project.bpm,
