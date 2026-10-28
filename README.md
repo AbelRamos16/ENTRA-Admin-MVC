@@ -86,6 +86,8 @@ Integrantes: Abel Ramos y Julián Pacheco.
 
 ## Vercel
 
+La compilación usa TypeScript 5.9.3 fijado en el lockfile y `typeRoots` explícito a `node_modules/@types`. Esta configuración evita depender de la resolución de tipos del compilador nativo TypeScript 7 durante el empaquetado. Ante TS2688, comprobar que el despliegue use este commit y que el log muestre TypeScript 5.9.3; las pruebas locales no sustituyen la comprobación del despliegue en Vercel.
+
 El punto de entrada `src/server.ts` exporta Express por defecto; el listener solo arranca al ejecutar el archivo directamente. `vercel.json` fuerza `npm ci --include=dev` para disponer de los tipos Node y Express al compilar. Mantener Framework Preset Express y Root Directory en la raíz del repositorio. Configurar SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY y SUPABASE_ANON_KEY en el panel de variables de Vercel; no publicar claves. Si existe un Install Command personalizado en el panel, usar también `npm ci --include=dev`. No configurar una carpeta de salida de frontend para esta aplicación backend.
 
 Vercel sirve `public/` mediante su CDN. Los MP3 se reciben en una función: comprobar sus límites de tamaño antes de considerar válidas las cargas de hasta 10 MB del modo local; para cargas mayores al límite de la plataforma debe implementarse subida directa a Storage o usar un servidor adecuado.
