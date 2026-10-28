@@ -93,3 +93,5 @@ El punto de entrada `src/server.ts` exporta Express por defecto; el listener sol
 Vercel sirve `public/` mediante su CDN. Los MP3 se reciben en una función: comprobar sus límites de tamaño antes de considerar válidas las cargas de hasta 10 MB del modo local; para cargas mayores al límite de la plataforma debe implementarse subida directa a Storage o usar un servidor adecuado.
 
 Documentación: https://vercel.com/docs/frameworks/backend/express
+
+Los imports relativos TypeScript se convierten a .js mediante rewriteRelativeImportExtensions al compilar. Vercel incluye también src/client/** porque el servidor lee estos archivos para servir los scripts del navegador. Verificado localmente el arranque compilado y las rutas /health, /login y /register (HTTP 200).
