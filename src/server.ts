@@ -63,7 +63,10 @@ export function createApp(deps: { model?: ProjectModel; userModel?: UserModel; a
   app.use(errors);
   return { app, server: createServer(app), model, userModel };
 }
+const application = createApp();
+export default application.app;
+
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   const host = process.env.HOST ?? '127.0.0.1'; const port = Number(process.env.PORT ?? 3000);
-  createApp().server.listen(port, host, () => console.log(`ENTRA: http://${host}:${port}/login`));
+  application.server.listen(port, host, () => console.log(`ENTRA: http://${host}:${port}/login`));
 }

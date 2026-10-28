@@ -83,3 +83,11 @@ Guía oficial: https://render.com/docs/deploy-node-express-app
 Express y administración implementados. TypeScript y pruebas locales verificados. Migración SQL suministrada para aplicar en el Supabase del grupo; ejecución real de la función y despliegue público pendientes. Las claves no se incluyen.
 
 Integrantes: Abel Ramos y Julián Pacheco.
+
+## Vercel
+
+El punto de entrada `src/server.ts` exporta Express por defecto; el listener solo arranca al ejecutar el archivo directamente. `vercel.json` fuerza `npm ci --include=dev` para disponer de los tipos Node y Express al compilar. Mantener Framework Preset Express y Root Directory en la raíz del repositorio. Configurar SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY y SUPABASE_ANON_KEY en el panel de variables de Vercel; no publicar claves. Si existe un Install Command personalizado en el panel, usar también `npm ci --include=dev`. No configurar una carpeta de salida de frontend para esta aplicación backend.
+
+Vercel sirve `public/` mediante su CDN. Los MP3 se reciben en una función: comprobar sus límites de tamaño antes de considerar válidas las cargas de hasta 10 MB del modo local; para cargas mayores al límite de la plataforma debe implementarse subida directa a Storage o usar un servidor adecuado.
+
+Documentación: https://vercel.com/docs/frameworks/backend/express
