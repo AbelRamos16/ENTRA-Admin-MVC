@@ -6,5 +6,5 @@ export function adminLayout(content: string, token: string, section: AdminSectio
     ['artists', '/admin/artists', 'Artistas'],
     ['projects', '/admin/projects', 'Proyectos'],
   ];
-  return layout(`<nav class="admin-nav" aria-label="Administración">${tabs.map(([key, href, label]) => `<a class="admin-nav__link ${key === section ? 'admin-nav__link--active' : ''}" href="${href}" ${key === section ? 'aria-current="page"' : ''}>${e(label)}</a>`).join('')}</nav>${content}`, token, 'admin');
+  return layout(`<nav class="admin-nav" aria-label="Administración">${tabs.map(([key, href, label]) => `<a class="admin-nav__link ${key === section ? 'admin-nav__link--active' : ''}" href="${href}" ${key === section ? 'aria-current="page"' : ''}>${e(label)}</a>`).join('')}</nav>${content}`, token, 'admin', 'superadmin');
 }

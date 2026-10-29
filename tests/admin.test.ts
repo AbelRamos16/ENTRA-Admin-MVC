@@ -42,6 +42,7 @@ test('Administración: sesión, rol, CSRF, selector relacionado, creación y act
   assert.equal((await request(base,'/admin','')).status,303);
   assert.equal((await request(base,'/admin','artist')).status,403);
   const page=await(await request(base,'/admin')).text();
+  assert.match(page,/href="\/admin"/);
   assert.match(page,/<select name="parentId" required>/);
   assert.match(page,/Tipos de colaboración/);assert.doesNotMatch(page,/Guardar asignación/);
   const fields={csrf:'token',kind:'collaboration',name:'Puente',parentId:'2'};
@@ -56,8 +57,12 @@ test('Administración: sesión, rol, CSRF, selector relacionado, creación y act
 });
 test('CRUD usa catálogos, conserva selección y rechaza manipulación antes de escribir',async()=>{
  const writes:ProjectInput[]=[];
- const model={create:async(input:ProjectInput)=>{writes.push(input);return 1;}} as unknown as ProjectModel;
+ const model={list:async()=>[],create:async(input:ProjectInput)=>{writes.push(input);return 1;}} as unknown as ProjectModel;
  await withServer({model},async base=>{
+  for (const path of ['/projects', '/projects/new']) {
+   assert.doesNotMatch(await(await request(base,path,'artist')).text(), /href="\/admin"/);
+   assert.match(await(await request(base,path,'admin')).text(), /href="\/admin"/);
+  }
   const page=await(await request(base,'/projects/new','artist')).text();
   assert.match(page,/name="genreId"/);assert.match(page,/data-parent="2"/);assert.doesNotMatch(page,/>Inactivo</);
   const fields={...selection,title:'Demo jazz',bpm:'120',musicalKey:'La menor',status:'Borrador',csrf:'token',genre:'Falso',need:'Texto manipulado'};

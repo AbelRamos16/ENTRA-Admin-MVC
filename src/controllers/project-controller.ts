@@ -168,13 +168,13 @@ export async function projectController(
 
     return html(
       response,
-      listView(projects, token, messages[result] ?? ''),
+      listView(projects, token, messages[result] ?? '', user.role),
     );
   }
 
   // Muestra el formulario de creación.
   if (method === 'GET' && path === '/projects/new') {
-    return html(response, formView(token, undefined, '', undefined, await catalogs.list(), basePath));
+    return html(response, formView(token, undefined, '', undefined, await catalogs.list(), basePath, user.role));
   }
 
   // Ruta de reproducción del audio de un proyecto.
@@ -317,14 +317,14 @@ export async function projectController(
   // Presenta el detalle, el formulario de edición o la confirmación.
   if (method === 'GET' && project && match) {
     if (match[2] === 'delete') {
-      return html(response, deleteView(project, token, basePath));
+      return html(response, deleteView(project, token, basePath, user.role));
     }
 
     if (match[2] === 'edit') {
-      return html(response, formView(token, project, '', undefined, await catalogs.list(), basePath));
+      return html(response, formView(token, project, '', undefined, await catalogs.list(), basePath, user.role));
     }
 
-    return html(response, detailView(project, token, basePath));
+    return html(response, detailView(project, token, basePath, user.role));
   }
 
   const isCreate =
@@ -436,7 +436,7 @@ export async function projectController(
       if (error instanceof ValidationError) {
         return html(
           response,
-          formView(token, project, error.message, fields, await catalogs.list(), basePath),
+          formView(token, project, error.message, fields, await catalogs.list(), basePath, user.role),
           422,
         );
       }

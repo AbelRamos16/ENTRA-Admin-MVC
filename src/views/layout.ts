@@ -1,7 +1,7 @@
 export const escapeHtml = (value: unknown): string => String(value ?? '').replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]!);
 export const icon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>`;
 
-export function layout(content: string, token: string, section = 'projects'): string {
+export function layout(content: string, token: string, section = 'projects', role = ''): string {
   return `<!doctype html>
 <html lang="es">
 <head>
@@ -20,7 +20,7 @@ export function layout(content: string, token: string, section = 'projects'): st
 
       <nav class="masthead__nav" aria-label="Principal">
         <a class="masthead__link ${section === 'projects' ? 'masthead__link--active' : ''}" href="/projects">Proyectos</a>
-        <a class="masthead__link" href="/projects#library">Biblioteca</a><a class="masthead__link ${section === 'admin' ? 'masthead__link--active' : ''}" href="/admin">Administración</a>
+        <a class="masthead__link" href="/projects#library">Biblioteca</a>${role === 'superadmin' ? `<a class="masthead__link ${section === 'admin' ? 'masthead__link--active' : ''}" href="/admin">Administración</a>` : ''}
         <a class="masthead__create" href="/projects/new">
           ${icon}
           <span>Nuevo proyecto</span>
