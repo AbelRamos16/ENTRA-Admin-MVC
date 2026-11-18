@@ -56,10 +56,10 @@ export async function adminController(req: IncomingMessage, res: ServerResponse,
   if (req.method === 'GET' && url.pathname === '/admin/projects') {
     const owner = url.searchParams.get('artist') ?? '';
     if (owner) { try { validateArtistId(owner); } catch { notFound(); return; } }
-    const messages: Record<string,string> = {updated:'Proyecto actualizado.',deleted:'Proyecto eliminado.'};
+    const messages: Record<string,string> = {updated:'Proyecto actualizado.',deleted:'Proyecto eliminado.',published:'Publicado en Descubrir.',unpublished:'Retirado del feed.'};
     html(res, adminProjectsView(await projects.list(user, owner || undefined), await model.artists(user), token, owner, messages[url.searchParams.get('result') ?? ''] ?? '')); return;
   }
-  if (/^\/admin\/projects\/[1-9]\d*(?:\/(edit|delete|audio))?$/.test(url.pathname)) {
+  if (/^\/admin\/projects\/[1-9]\d*(?:\/(edit|delete|publish|unpublish|audio))?$/.test(url.pathname)) {
     const projectUrl = new URL(url);
     projectUrl.pathname = url.pathname.replace(/^\/admin/, '');
     await projectController(req, res, projectUrl, projects, token, user, catalogs, '/admin/projects');

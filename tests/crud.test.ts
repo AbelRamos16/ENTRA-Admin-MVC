@@ -87,7 +87,7 @@ test('CRUD HTTP, validación, escape HTML, CSRF y persistencia', async () => {
     });
 
     assert.equal(loginResponse.status, 303);
-    assert.equal(loginResponse.headers.get('location'), '/projects');
+    assert.equal(loginResponse.headers.get('location'), '/feed');
 
     const setCookies = loginResponse.headers.getSetCookie();
     const sessionCookie = setCookies.find((cookie) =>

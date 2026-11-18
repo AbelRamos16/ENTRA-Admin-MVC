@@ -1,3 +1,5 @@
+import { FeedModel } from './models/feed.ts';
+import { feedController } from './controllers/feed-controller.ts';
 import { CatalogModel } from './models/catalog.ts';
 import express from 'express';
 import type { ErrorRequestHandler } from 'express';
@@ -16,7 +18,8 @@ function sessionCookie(header = '') {
   try { return part ? decodeURIComponent(part.slice('entra_session='.length)) : undefined; }
   catch { return undefined; }
 }
-export function createApp(deps: { model?: ProjectModel; userModel?: UserModel; adminModel?: AdminModel; catalogModel?: CatalogModel } = {}) {
+export function createApp(deps: { model?: ProjectModel; userModel?: UserModel; adminModel?: AdminModel; catalogModel?: CatalogModel; feedModel?: FeedModel } = {}) {
+  const feedModel = deps.feedModel ?? new FeedModel();
   const model = deps.model ?? new ProjectModel();
   const userModel = deps.userModel ?? new UserModel();
   const catalogModel = deps.catalogModel ?? new CatalogModel();
@@ -29,7 +32,7 @@ export function createApp(deps: { model?: ProjectModel; userModel?: UserModel; a
     res.setHeader('X-Content-Type-Options', 'nosniff'); res.setHeader('Cache-Control', 'no-store'); next();
   });
   app.get('/health', (_req, res) => { res.json({ status: 'ok' }); });
-  for (const name of ['onboarding', 'password-feedback', 'project-audio', 'catalog-selects']) {
+  for (const name of ['onboarding', 'password-feedback', 'project-audio', 'catalog-selects', 'feed']) {
     app.get(`/${name}.js`, (_req, res) => {
       res.type('text/javascript').send(stripTypeScriptTypes(readFileSync(new URL(`./client/${name}.ts`, import.meta.url), 'utf8')));
     });
@@ -49,6 +52,9 @@ export function createApp(deps: { model?: ProjectModel; userModel?: UserModel; a
     res.locals.session = session;
     res.locals.user = { id: session.userId, username: session.username, role: session.role };
     next();
+  });
+  app.use('/feed', async (req, res) => {
+    await feedController(req, res, new URL(req.originalUrl, 'http://localhost'), feedModel, res.locals.user, res.locals.session.csrfToken);
   });
   app.use('/admin', async (req, res) => {
     if (res.locals.user.role !== 'superadmin') { res.status(403).send('Acceso exclusivo del administrador.'); return; }

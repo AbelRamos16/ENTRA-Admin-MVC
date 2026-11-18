@@ -121,3 +121,8 @@ h1,h2,.empty h3,.welcome__copy h2{font-family:'Anton',sans-serif;font-weight:400
 .admin-records__actions { display:flex; flex-wrap:wrap; gap:10px; }
 @media(max-width:600px) { .admin-records__item { padding:20px; } .admin-records__actions { width:100%; } .admin-records__actions .button { flex:1; } .admin-nav__link { flex:1; text-align:center; padding:12px; } }
 @media(prefers-reduced-motion:reduce) { .admin-nav__link { transition:none; } }
+
+.publication-panel{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:24px;padding:24px;border:1px solid #52647e;border-radius:24px;background:#1e2c3f;margin:24px 0}.publication-panel h2{font-size:30px;margin:12px 0}.publication-panel p{max-width:60ch}.publication-panel__actions{display:flex;flex-wrap:wrap;gap:12px}.publication-preview{padding:24px;background:#25364c;border-radius:24px;margin:24px 0;display:grid;gap:16px}.publication-preview h2{font-size:42px;overflow-wrap:anywhere}.publication-preview audio{width:100%}.publication-checklist{padding:24px;border:1px solid #53647c;border-radius:24px}.publication-checklist h2{font-size:30px}.publication-checklist li{margin-block:10px;color:#c3d0e3}.publication-hint{margin-bottom:20px;color:#b9cbe3;font-size:14px}.badge--publication{border-color:#ffc65c66;color:#ffda8b}.project-card__status-row{flex-wrap:wrap}.project-card__actions{flex-wrap:wrap;gap:14px}.project-card__actions a{font-size:12px}
+
+/* Descubrir y Mis proyectos deben estar disponibles también en celular. */
+.masthead__nav .masthead__link:nth-child(2){display:inline-flex}

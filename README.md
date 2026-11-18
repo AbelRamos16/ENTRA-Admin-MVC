@@ -4,6 +4,27 @@ ENTRA conecta ideas musicales con lo que les falta para avanzar. Los artistas or
 
 **TypeScript · Express 5 · Node.js 24 · Supabase**
 
+## Descubrir y publicar
+
+El inicio después del Login es `/feed`: una publicación por pantalla, desplazamiento vertical con ajuste por tarjeta y hook en bucle. Cada publicación muestra título, nombre público del artista, usuario, género, BPM y colaboración buscada. En computadora hay flechas; el teclado admite ↑/↓ y espacio para reproducir/pausar.
+
+El sonido empieza con un toque. Después, cambiar de tarjeta pausa la anterior y reproduce el hook activo. Cambiar de pestaña o salir detiene el audio. Se respeta movimiento reducido. El feed carga 8 registros por página mediante cursor de fecha e ID y no incluye archivos binarios en su listado.
+
+### Flujo del proyecto
+
+1. Guardar la ficha como **borrador** (puede no tener demo).
+2. Adjuntar un MP3 y marcar el inicio/final del hook.
+3. Abrir **Publicar** para revisar los requisitos y escuchar el fragmento.
+4. Confirmar **Publicar en Descubrir**. La base vuelve a validar demo, hook y referencias.
+5. **Retirar del feed** lo devuelve a borrador sin eliminarlo.
+
+`publication_status` (`draft`/`published`) es independiente del avance musical `status`. Al publicar una ficha que aún estaba en estado Borrador, su avance pasa a Buscando colaboración. Los datos anteriores quedan privados por defecto: ninguna demo existente se publica automáticamente. Los cambios a un proyecto publicado se reflejan en la publicación; puede retirarse antes de editar.
+
+El feed requiere sesión. Las cuentas pueden escuchar demos publicadas de otros artistas mediante `/feed/:id/audio`, pero esa lectura no concede acceso al CRUD privado `/projects/:id`. La clave administrativa se utiliza solo en servidor. Publicar o retirar requiere autoría o superadmin, POST y CSRF. La demo completa puede descargarse desde su ruta mientras esté publicada; el hook define qué parte reproduce la interfaz, no un recorte físico del archivo.
+
+**Migración nueva, antes de subir el código:** ejecutar completo `supabase/migrations/20261117_feed_publication.sql` después de las migraciones de catálogos y perfiles. Añade columnas e índice, reglas de publicación y la función paginada `entra_feed_page`, ejecutable solo por el backend. No cambia claves ni requiere nuevas variables de entorno.
+
+
 ## Aplicación publicada
 
 [ENTRA](https://entra-admin-mvc-i5c1.vercel.app/login)
@@ -32,7 +53,8 @@ Se utiliza la base existente del grupo: Supabase Auth, `profiles`, `projects`, `
 3. Ejecutar también `supabase/migrations/20261028_artist_profiles.sql`: añade `profiles.bio` y restricciones de perfil, sin cambiar credenciales, roles ni autoría.
 4. La migración de catálogos crea `entra_catalog_items`, datos iniciales, claves foráneas y triggers de validación. Es transaccional y repetible. No borra proyectos.
 5. Las nuevas columnas de `projects` son `genre_id`, `instrument_id` y `collaboration_id`. Los proyectos anteriores mantienen descripción, necesidad, audio, hook y artista. El género se vincula cuando hay coincidencia; los nuevos selectores se completan al editar.
-6. La cuenta administrativa se configura en `profiles.role` como `superadmin`. El registro público no permite elegir ese rol.
+6. Ejecutar `supabase/migrations/20261117_feed_publication.sql` para habilitar borradores, publicación y el feed.
+7. La cuenta administrativa se configura en `profiles.role` como `superadmin`. El registro público no permite elegir ese rol.
 
 La migración anterior `20261028_admin_assignments.sql` es histórica y no es necesaria para instalar los nuevos catálogos.
 
@@ -84,15 +106,15 @@ npm run typecheck
 npm run test:local
 ```
 
-Las siete pruebas locales usan modelos sustitutos y no modifican Supabase. Comprueban acceso, CSRF, selectores, campos manipulados, creación/actualización de catálogos, persistencia de selección y hook fuera de duración. Incluyen perfiles con campos permitidos, escape HTML, acceso denegado a artistas, reproducción parcial de audio, edición administrativa y confirmación/CSRF al eliminar. Para cargar configuración admiten variables ficticias con formato válido.
+Las doce pruebas locales usan modelos sustitutos y no modifican Supabase real. Además de la administración, prueban los requisitos de publicación, el cursor, las consultas privadas de los modelos reales, el audio publicado, el bloqueo de edición ajena y el ciclo de publicar/retirar con CSRF. Comprueban acceso, CSRF, selectores, campos manipulados, creación/actualización de catálogos, persistencia de selección y hook fuera de duración. Incluyen perfiles con campos permitidos, escape HTML, acceso denegado a artistas, reproducción parcial de audio, edición administrativa y confirmación/CSRF al eliminar. Para cargar configuración admiten variables ficticias con formato válido.
 
 `npm test` incluye pruebas de integración que crean usuarios y proyectos temporales en el Supabase configurado. Usar una base de prueba con la migración aplicada. No se ejecutaron contra la base del grupo en esta actualización.
 
-Las migraciones se probaron además en PostgreSQL aislado (PGlite): repetición, datos anteriores, duplicados, referencia inválida, colaboración de otro instrumento y desactivación. La migración de perfiles también se probó al repetirla, conservar usuario/rol y rechazar nombres/biografías inválidos. Pendiente aplicar y comprobar la versión nueva en Supabase/Vercel reales.
+Las migraciones se probaron además en PostgreSQL aislado (PGlite): repetición, datos anteriores, duplicados, referencia inválida, colaboración de otro instrumento y desactivación. La migración de perfiles también se probó al repetirla, conservar usuario/rol y rechazar nombres/biografías inválidos. El SQL de feed también se verificó en PostgreSQL aislado: borradores privados, paginación, publicación inválida, edición y retirada. La interfaz se probó en navegador local en móvil y escritorio con cuentas, demos y proyectos ficticios; no se utilizaron datos de producción. Pendiente aplicar y comprobar la versión nueva en Supabase/Vercel reales.
 
 ## Despliegue en Vercel
 
-1. Ejecutar primero ambas migraciones nuevas en Supabase (catálogos y perfiles).
+1. Ejecutar en orden las migraciones de catálogos, perfiles y `20261117_feed_publication.sql`, antes de subir el commit.
 2. Subir los cambios al repositorio ENTRA-Admin-MVC, rama main.
 3. Usar Framework Preset Express y raíz del repositorio; sin directorio de salida de frontend.
 4. Configurar las tres variables Supabase para Production. Marcar la clave secreta como Secret.
@@ -112,8 +134,9 @@ También se conserva `render.yaml` como alternativa de servidor. No se requieren
 4. Entrar como artista y crear un proyecto con esas opciones. Cambiar de instrumento y mostrar el filtrado.
 5. Mostrar en el código la validación backend de BPM/hook y de referencias. Una cuenta artista recibe 403 en /admin.
 6. Editar o desactivar una opción y explicar que no se borran proyectos.
-7. Abrir Artistas, buscar un perfil, editar su nombre/biografía y revisar sus proyectos. En Proyectos, probar edición, Conservar y eliminación con una publicación de prueba.
-8. Mostrar repositorio y README. Grabar y adjuntar el video solicitado.
+7. Guardar un borrador, publicar su hook y verlo en Descubrir desde otra cuenta. Demostrar que esta cuenta no puede editarlo y que retirarlo lo elimina del feed.
+8. Abrir Artistas, buscar un perfil, editar su nombre/biografía y revisar sus proyectos. En Proyectos, probar edición, Conservar y eliminación con una publicación de prueba.
+9. Mostrar repositorio y README. Grabar y adjuntar el video solicitado.
 
 ## Integrantes
 
