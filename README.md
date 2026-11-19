@@ -1,66 +1,37 @@
-# ENTRA · Administración MVC
+# ENTRA · Administración MVC y colaboración musical
 
-ENTRA conecta ideas musicales con lo que les falta para avanzar. Los artistas organizan proyectos, adjuntan una demo y marcan el hook donde necesitan colaboración.
+ENTRA conecta músicos mediante demos y hooks. Cada artista prepara un proyecto privado, publica cuando está listo y recibe propuestas musicales de otras cuentas.
 
-**TypeScript · Express 5 · Node.js 24 · Supabase**
+## Estado actual
 
-## Descubrir y publicar
+- **Descubrir:** carrusel horizontal con retratos de artistas, hook seleccionado, título, género, BPM y colaboración buscada. Navegación táctil, rueda y teclado; movimiento reducido cuando el navegador lo solicita.
+- **Búsqueda:** título o artista, género, instrumento necesario, BPM y estado del proyecto. Los filtros se conservan al cargar páginas adicionales.
+- **Proyectos:** CRUD, borradores privados, publicación y retirada; validaciones de audio, duración, hook y referencias a catálogos en servidor.
+- **Propuestas:** mensaje con muestra musical opcional. Se puede grabar con micrófono, adjuntar un archivo, revisar la toma y enviarla. El destinatario acepta o rechaza.
+- **Perfil:** biografía, nombre artístico, instrumentos, géneros, demos y publicaciones. Cada artista edita únicamente su perfil. Directorio de artistas y enlaces desde el feed.
+- **Biblioteca:** accesos separados a Mis proyectos, Guardados y Colaboraciones. Una propuesta aceptada crea como máximo una colaboración. Sus participantes pueden completarla o cancelarla.
+- **Notificaciones:** solicitudes, decisiones, cambios de colaboración y moderación; contador de no leídas, lectura individual o conjunta. Son avisos dentro de ENTRA.
+- **Administración:** catálogos, artistas, proyectos y reportes. Ocultar/restaurar publicaciones con motivo, sin borrar sus datos; la visibilidad se respeta en feed, perfiles, audio público y nuevas propuestas.
 
-El inicio después del Login es `/feed`: un carrusel horizontal con tarjeta central destacada y hook en bucle. Cada publicación muestra título, nombre público del artista, usuario, género, BPM y colaboración buscada. En computadora hay flechas; el teclado admite ↑/↓ y espacio para reproducir/pausar.
+Aceptar una propuesta no mezcla pistas ni transfiere la autoría del proyecto. El avance musical del proyecto se sigue editando desde su ficha. Los audios enviados son tomas separadas: se recomienda grabar con audífonos.
 
-El sonido empieza con un toque. Después, cambiar de tarjeta pausa la anterior y reproduce el hook activo. Cambiar de pestaña o salir detiene el audio. Se respeta movimiento reducido. El feed carga 8 registros por página mediante cursor de fecha e ID y no incluye archivos binarios en su listado.
+## Tecnologías y MVC
 
-### Flujo del proyecto
+Node.js 24, TypeScript, Express, HTML/CSS y JavaScript del navegador; Supabase Auth y PostgreSQL.
 
-1. Guardar la ficha como **borrador** (puede no tener demo).
-2. Adjuntar un MP3 y marcar el inicio/final del hook.
-3. Abrir **Publicar** para revisar los requisitos y escuchar el fragmento.
-4. Confirmar **Publicar en Descubrir**. La base vuelve a validar demo, hook y referencias.
-5. **Retirar del feed** lo devuelve a borrador sin eliminarlo.
+- `src/models/`: validación y acceso a datos. `project.ts`, `catalog.ts`, `user.ts`, `admin.ts`, `feed.ts`, `proposal.ts` y `community.ts`.
+- `src/controllers/`: rutas HTTP, formularios, sesión, CSRF y respuestas. Los controladores delegan reglas y persistencia a los modelos.
+- `src/views/`: HTML escapado, formularios, perfiles, biblioteca y administración.
+- `src/client/`: audio/hook, carrusel, grabador, catálogo dependiente y contador de avisos.
+- `public/`: estilos, tipografías, logo y recursos gráficos.
+- `supabase/migrations/`: cambios de estructura y reglas PostgreSQL.
+- `tests/`: pruebas de validación, permisos, formularios y contratos HTTP.
 
-`publication_status` (`draft`/`published`) es independiente del avance musical `status`. Al publicar una ficha que aún estaba en estado Borrador, su avance pasa a Buscando colaboración. Los datos anteriores quedan privados por defecto: ninguna demo existente se publica automáticamente. Los cambios a un proyecto publicado se reflejan en la publicación; puede retirarse antes de editar.
+`src/server.ts` construye y exporta Express. Los controladores privados requieren una sesión de aplicación y los cambios comprueban el token CSRF. Las claves administrativas solo se usan en servidor.
 
-El feed requiere sesión. Las cuentas pueden escuchar demos publicadas de otros artistas mediante `/feed/:id/audio`, pero esa lectura no concede acceso al CRUD privado `/projects/:id`. La clave administrativa se utiliza solo en servidor. Publicar o retirar requiere autoría o superadmin, POST y CSRF. La demo completa puede descargarse desde su ruta mientras esté publicada; el hook define qué parte reproduce la interfaz, no un recorte físico del archivo.
+## Ejecutar localmente
 
-**Migración nueva, antes de subir el código:** ejecutar completo `supabase/migrations/20261117_feed_publication.sql` después de las migraciones de catálogos y perfiles. Añade columnas e índice, reglas de publicación y la función paginada `entra_feed_page`, ejecutable solo por el backend. No cambia claves ni requiere nuevas variables de entorno.
-
-
-## Aplicación publicada
-
-[ENTRA](https://entra-admin-mvc-i5c1.vercel.app/login)
-
-La URL corresponde al proyecto de producción. Los cambios locales requieren push y despliegue para aparecer allí.
-
-## Qué hace esta entrega
-
-- Registro, Login, cierre de sesión y rutas protegidas.
-- CRUD de proyectos con lectura separada, demo MP3 y selección visual del hook.
-- Administración exclusiva para cuentas con `profiles.role = 'superadmin'`.
-- Secciones administrativas **Catálogos · Artistas · Proyectos** con navegación compartida.
-- Artistas: búsqueda por usuario/nombre, edición de nombre artístico y biografía (hasta 500 caracteres), y consulta de sus proyectos.
-- Proyectos: filtro por artista, lectura con demo/hook, edición y eliminación con confirmación. Guardar, cancelar o conservar devuelve a la lista administrativa. Se reutiliza el CRUD y se mantiene la autoría.
-- Catálogos de géneros, instrumentos y tipos de colaboración: crear, consultar, editar y desactivar/reactivar.
-- El artista elige género e instrumento desde la base. Al cambiar de instrumento, el selector de colaboración muestra solo las opciones relacionadas: Voz → Coro / Verso; Bajo → Línea de bajo.
-- Desactivar una opción la retira de nuevos formularios; conserva los proyectos existentes. Para editar un proyecto con opciones desactivadas se seleccionan opciones activas.
-- La administración ya no transfiere proyectos ni solicita un motivo. La migración conserva los datos del historial anterior y retira el permiso de ejecución de la función de reasignación. No revierte transferencias realizadas.
-
-## Preparación de Supabase: antes de desplegar
-
-Se utiliza la base existente del grupo: Supabase Auth, `profiles`, `projects`, `app_sessions` y el trigger de creación del perfil deben existir.
-
-1. Abrir `supabase/migrations/20261028_music_catalogs.sql`.
-2. Copiar el archivo completo en Supabase → SQL Editor y ejecutarlo.
-3. Ejecutar también `supabase/migrations/20261028_artist_profiles.sql`: añade `profiles.bio` y restricciones de perfil, sin cambiar credenciales, roles ni autoría.
-4. La migración de catálogos crea `entra_catalog_items`, datos iniciales, claves foráneas y triggers de validación. Es transaccional y repetible. No borra proyectos.
-5. Las nuevas columnas de `projects` son `genre_id`, `instrument_id` y `collaboration_id`. Los proyectos anteriores mantienen descripción, necesidad, audio, hook y artista. El género se vincula cuando hay coincidencia; los nuevos selectores se completan al editar.
-6. Ejecutar `supabase/migrations/20261117_feed_publication.sql` para habilitar borradores, publicación y el feed.
-7. La cuenta administrativa se configura en `profiles.role` como `superadmin`. El registro público no permite elegir ese rol.
-
-La migración anterior `20261028_admin_assignments.sql` es histórica y no es necesaria para instalar los nuevos catálogos.
-
-## Instalación local
-
-Requiere Node >=24.16.0 <25.
+Requisitos: Node.js 24.16 o compatible con la versión indicada en `package.json`, npm y un proyecto Supabase.
 
 ```powershell
 npm ci
@@ -68,117 +39,92 @@ Copy-Item .env.example .env
 npm run dev
 ```
 
-Completar `.env` con `SUPABASE_URL`, `SUPABASE_ANON_KEY` (publishable) y `SUPABASE_SERVICE_ROLE_KEY` (secret, solo servidor). Nunca versionar claves. Puerto local 3000, host 127.0.0.1.
+Completar en `.env`:
 
-## Arquitectura y buenas prácticas
-
-| Capa | Archivos | Responsabilidad |
-|---|---|---|
-| Entrada Express | `src/server.ts` | Sesión, autorización, rutas y errores |
-| Controladores | `src/controllers/` | Solicitudes, CSRF, validación y respuestas |
-| Modelos | `src/models/` | Persistencia Supabase y reglas del dominio |
-| Vistas | `src/views/` | HTML y formularios compartidos |
-| Cliente | `src/client/` | Onda, onboarding y selectores dependientes |
-| Recursos | `public/` | Logo, fuentes y estilos BEM |
-| Base | `supabase/migrations/` | Esquema, relaciones y restricciones |
-
-KISS: una aplicación Express con formularios HTML. DRY: un modelo de catálogos y un componente de formulario para los tres tipos; `resolveSelection` centraliza la validación de relaciones. BEM: `catalog-panel__form`, `catalog-panel__heading`, `project-card__body`. MVC separa presentación, solicitudes y persistencia.
-
-Node.js sigue siendo el runtime; Express procesa las solicitudes. Los controladores leen streams con límites para no consumir el MP3 con un parser global.
-
-## Validación backend y relaciones
-
-- BPM entero de 40 a 240, título, tonalidad y estado comprobados antes de guardar.
-- MP3 inspeccionado con music-metadata; hook dentro de la duración real: `0 <= inicio < fin <= duración`.
-- Nombres de catálogo de 2–60 caracteres, sin etiquetas/caracteres de control y sin duplicados en el mismo tipo e instrumento.
-- El servidor consulta la base para validar que los IDs existan, estén activos y sean del tipo correcto. Coro + Bajo se rechaza incluso manipulando el HTML o enviando POST manual.
-- El tipo de colaboración referencia a su instrumento mediante `parent_id`. Los proyectos referencian las opciones mediante claves foráneas.
-- PostgreSQL repite la comprobación de tipo, actividad y relación mediante triggers y sincroniza los textos de género/necesidad al guardar. Una colaboración utilizada no puede moverse a otro instrumento.
-- Perfil: nombre artístico de 2–60 caracteres y biografía de hasta 500; el modelo solo actualiza `display_name` y `bio`. Los campos extra enviados por un formulario no cambian usuario, contraseña, email ni rol.
-- Catálogos con RLS y acceso de escritura solo desde backend. El servidor exige superadmin y CSRF para cualquier cambio administrativo.
-
-Los textos de género/necesidad se conservan como instantánea para visualizar proyectos anteriores; las referencias nuevas son IDs reales. Renombrar el catálogo no reescribe la ficha histórica hasta que el proyecto vuelve a guardarse.
-
-## Pruebas
-
-```powershell
-npm run typecheck
-npm run test:local
+```dotenv
+PORT=3000
+SUPABASE_URL=https://TU_PROJECT_REF.supabase.co
+SUPABASE_ANON_KEY=TU_CLAVE_PUBLICABLE
+SUPABASE_SERVICE_ROLE_KEY=TU_CLAVE_SECRETA
 ```
 
-Las doce pruebas locales usan modelos sustitutos y no modifican Supabase real. Además de la administración, prueban los requisitos de publicación, el cursor, las consultas privadas de los modelos reales, el audio publicado, el bloqueo de edición ajena y el ciclo de publicar/retirar con CSRF. Comprueban acceso, CSRF, selectores, campos manipulados, creación/actualización de catálogos, persistencia de selección y hook fuera de duración. Incluyen perfiles con campos permitidos, escape HTML, acceso denegado a artistas, reproducción parcial de audio, edición administrativa y confirmación/CSRF al eliminar. Para cargar configuración admiten variables ficticias con formato válido.
+No subir `.env` ni credenciales a Git. En Vercel usar los mismos nombres de variables y marcar la clave administrativa como Secret.
 
-`npm test` incluye pruebas de integración que crean usuarios y proyectos temporales en el Supabase configurado. Usar una base de prueba con la migración aplicada. No se ejecutaron contra la base del grupo en esta actualización.
+Aplicar en SQL Editor, por orden:
 
-Las migraciones se probaron además en PostgreSQL aislado (PGlite): repetición, datos anteriores, duplicados, referencia inválida, colaboración de otro instrumento y desactivación. La migración de perfiles también se probó al repetirla, conservar usuario/rol y rechazar nombres/biografías inválidos. El SQL de feed también se verificó en PostgreSQL aislado: borradores privados, paginación, publicación inválida, edición y retirada. La interfaz se probó en navegador local en móvil y escritorio con cuentas, demos y proyectos ficticios; no se utilizaron datos de producción. Pendiente aplicar y comprobar la versión nueva en Supabase/Vercel reales.
+1. `20261028_music_catalogs.sql`
+2. `20261028_artist_profiles.sql`
+3. `20261117_feed_publication.sql`
+4. `20261118_audio_proposals.sql`
+5. `20261118_artist_community.sql`
 
-## Despliegue en Vercel
+La migración histórica `20261028_admin_assignments.sql` conserva soporte de reasignaciones antiguas; la administración actual edita contenido sin transferirlo automáticamente.
 
-1. Ejecutar en orden las migraciones de catálogos, perfiles y `20261117_feed_publication.sql`, antes de subir el commit.
-2. Subir los cambios al repositorio ENTRA-Admin-MVC, rama main.
-3. Usar Framework Preset Express y raíz del repositorio; sin directorio de salida de frontend.
-4. Configurar las tres variables Supabase para Production. Marcar la clave secreta como Secret.
-5. Desplegar y comprobar Login, CRUD, administración y permisos en HTTPS.
+## Datos y permisos
 
-`vercel.json` instala dependencias de desarrollo para el compilador e incluye los scripts de `src/client/`. TypeScript está fijado en 5.9.3; `rewriteRelativeImportExtensions` convierte imports .ts a .js. El servidor exporta Express por defecto.
+- `auth.users`: cuentas administradas por Supabase Auth.
+- `profiles`: identidad pública, rol, biografía y preferencias musicales.
+- `app_sessions`: sesión de aplicación, hash del identificador, CSRF y caducidad.
+- `projects`: ficha, catálogos, MP3, hook, publicación y moderación.
+- `entra_catalog_items`: géneros, instrumentos y colaboraciones; `parent_id` vincula colaboración e instrumento.
+- `entra_proposals`: mensaje, muestra opcional, destinatario y decisión.
+- `entra_collaborations`: vínculo único con una propuesta aceptada, participantes y estado.
+- `entra_saved_projects`: publicaciones guardadas por usuario.
+- `entra_notifications`: avisos por destinatario y fecha de lectura.
+- `entra_reports`: reporte, resolución y administrador responsable.
 
-Vercel limita el tamaño de las solicitudes de las funciones: el límite local de MP3 de 10 MB no implica que la plataforma lo admita. Para archivos mayores a su límite se necesita subida directa a Storage o un servidor adecuado.
+Los roles del producto son artista (`user`) y administrador (`superadmin`). El registro nunca concede administración. Las tablas nuevas tienen RLS activada y acceso reservado al servidor; los modelos limitan lectura y escritura al usuario o participante correspondiente. Las funciones administrativas vuelven a verificar el rol en PostgreSQL. Los datos públicos del perfil no incluyen correos, contraseñas ni sesiones.
 
-También se conserva `render.yaml` como alternativa de servidor. No se requieren ambos despliegues.
+La moderación conserva el proyecto y notifica el motivo. El autor puede editarlo, pero únicamente administración puede restaurar la visibilidad. Los borradores y las publicaciones ocultas no aparecen en perfiles públicos ni en resultados. Una colaboración ya aceptada conserva su propuesta privada para sus participantes.
 
-## Demostración para la entrega
+## Subir música y colaborar
 
-1. Abrir la URL pública y mostrar que sin sesión no se accede a proyectos ni administración.
-2. Entrar como administrador; crear un género y un instrumento.
-3. Crear una colaboración eligiendo el instrumento desde un dropdown.
-4. Entrar como artista y crear un proyecto con esas opciones. Cambiar de instrumento y mostrar el filtrado.
-5. Mostrar en el código la validación backend de BPM/hook y de referencias. Una cuenta artista recibe 403 en /admin.
-6. Editar o desactivar una opción y explicar que no se borran proyectos.
-7. Guardar un borrador, publicar su hook y verlo en Descubrir desde otra cuenta. Demostrar que esta cuenta no puede editarlo y que retirarlo lo elimina del feed.
-8. Abrir Artistas, buscar un perfil, editar su nombre/biografía y revisar sus proyectos. En Proyectos, probar edición, Conservar y eliminación con una publicación de prueba.
-9. Mostrar repositorio y README. Grabar y adjuntar el video solicitado.
+**Publicar un beat:** Nuevo proyecto → Demo MP3 → seleccionar archivo y hook → Guardar borrador → Publicar. El límite del MP3 de proyecto es 10 MB en el servidor local; el formulario original de proyectos sigue sujeto al límite de carga de la plataforma Vercel. Para demos grandes se necesita una subida directa a Storage.
 
-## Integrantes
+**Proponer una colaboración:** Colaborar → escuchar la base → grabar o adjuntar una toma opcional → escribir el aporte → enviar. Las muestras originales de propuesta admiten hasta 10 MB y de 0,5 a 60 segundos. El navegador prepara un WAV mono PCM de 22.050 Hz (aproximadamente 2,65 MB por minuto) antes del envío, para mantenerse por debajo del límite del cuerpo de las funciones de Vercel. El servidor vuelve a comprobar peso, formato real, duración y mensaje. El micrófono requiere HTTPS o localhost y permiso del usuario.
 
-Abel Ramos y Julián Pacheco · Grupo 9 · ISWZ 3101 · NRC 5489
+El feed usa paginación por fecha/ID y no descarga los bytes de audio en la lista. La reproducción carga cada demo cuando corresponde y reproduce solo el hook. Una solicitud a un proyecto propio, retirado u oculto se rechaza; el destinatario se determina en servidor.
 
-## Datos de demostración del feed
+## Cuenta y ejemplos para demostración
 
-Se cargaron 10 artistas ficticios y 20 publicaciones (dos por artista), con biografías, títulos, descripción, BPM, tonalidad, referencias a catálogos y hooks válidos. Cada MP3 contiene una instrumental sintética original de 16 segundos. Las cuentas se identifican con `demo_` y las descripciones indican su carácter de demostración.
+La cuenta existente `Abelramos` tiene rol `superadmin`, configurado en Supabase a petición del titular; no está codificado en el frontend. El inicio de sesión admite diferencias de mayúsculas/minúsculas en el nombre. Su perfil incluye dos publicaciones de demostración, un borrador y accesos a toda su actividad.
 
-La carga se verificó en Supabase: las 20 publicaciones están publicadas y disponibles en el feed. También se comprobó en el sitio público la reproducción de un hook y la navegación a la siguiente publicación.
+Se prepararon ejemplos identificados como **Demo ENTRA** o **[Ejemplo ENTRA]**: guardados, propuestas pendiente/aceptada/rechazada, colaboración activa/completada, avisos y un reporte resuelto con ocultación/restauración reversible. Los proyectos y las cuentas anteriores se conservan.
 
-Para reproducir la carga en una base configurada con las migraciones, se requiere Node 24 y FFmpeg (con libmp3lame):
+Los diez usuarios `demo_` son ficticios y tienen dos publicaciones cada uno. Sus instrumentales son sintéticas originales; sus retratos fueron generados con imagegen. El atlas está en `public/art/entra-artists-atlas.png` y su asignación en `src/views/artist-art.ts`. Las cuentas reales mantienen su inicial y el recurso gráfico de ENTRA; no se les atribuyen rostros inventados.
+
+Para repetir únicamente la carga original de artistas/publicaciones se requiere FFmpeg:
 
 ```powershell
 node scripts/seed-demo.mjs --dry-run
 node scripts/seed-demo.mjs --env-file .env --project-ref TU_PROJECT_REF --ffmpeg-path ffmpeg
 ```
 
-El script comprueba el proyecto de destino, valida los datos mediante los modelos del servidor y reutiliza los registros de su propia carga para evitar duplicados. No reemplaza cuentas reales. Guarda las contraseñas aleatorias y el registro de la carga en `.demo-data/credentials.private.json`, excluido de Git; los audios generados también permanecen en esa carpeta privada. No publicar ese archivo ni el `.env`. Esta carga modifica datos directamente: no necesita un nuevo despliegue de Vercel para aparecer.
+El script comprueba el destino y evita sustituir cuentas reales. Guarda contraseñas aleatorias en `.demo-data/credentials.private.json`, excluido de Git. No publicar ese archivo. Los ejemplos de actividad de Abel se cargaron con un script local privado y no se ejecutan al arrancar ni al desplegar.
 
-## Descubrir: carrusel horizontal
+## Verificación
 
-La vista presenta portadas con la colaboración buscada y el botón Colaborar dentro de la imagen; debajo aparecen el nombre de artista, su usuario y el reproductor del hook. Navega con gestos horizontales, rueda del ratón o flechas izquierda/derecha. La tarjeta central conserva el foco visual; las laterales usan escala y perspectiva. Se respeta la preferencia de movimiento reducido. Los perfiles de demostración usan retratos ficticios propios; las demás cuentas conservan el recurso gráfico de ENTRA.
+```powershell
+npm run typecheck
+npm run test:local
+```
 
-Colaborar abre el grabador y permite adjuntar, revisar y enviar una propuesta de audio; el artista recibe y revisa los aportes en Propuestas. Requiere la migración `20261118_audio_proposals.sql`. Para subir un beat: Nuevo proyecto → Demo MP3 → seleccionar archivo y hook → Guardar borrador → Publicar. La carga conserva las validaciones existentes del servidor y los límites del despliegue.
+Las pruebas locales usan modelos sustitutos y no modifican la base real. Cubren validaciones, sesión, CSRF, catálogos relacionados, alcance por usuario, perfiles, búsqueda, publicación, propuestas, audio privado, biblioteca y moderación. `npm test` también incluye pruebas de integración que pueden crear datos temporales; usar una base de prueba.
 
-Verificación del rediseño: TypeScript, 12 pruebas locales, navegación horizontal, reproducción del hook y propuesta en navegador; revisión visual a 390 × 844 y escritorio. El rediseño requiere subir los archivos y desplegar para aparecer en producción.
+Las migraciones se verificaron además en PostgreSQL aislado: repetición, permisos, destinatarios, publicaciones privadas, colaboración única, notificaciones, cierre y moderación reversible, incluso con catálogos desactivados. Se revisó el navegador en escritorio y a 390 × 844. Una grabación real requiere comprobar el permiso y el dispositivo físico del usuario.
 
-## Paleta visual ENTRA
+## Despliegue
 
-La interfaz utiliza Black Pearl `#04141E` como fondo, Turquoise Sea `#64DBE8` para navegación, selección y foco, y Flush Orange `#FF6D04` para acciones principales. Los neutros derivados mantienen separación entre superficies y contraste del texto. El logo SVG y el isotipo conservan sus formas y adoptan naranja/turquesa. La paleta se aplica a acceso, proyectos, administración y Descubrir; conserva las preferencias de movimiento reducido.
+Sitio: https://entra-admin-mvc-i5c1.vercel.app
 
-### Retratos de artistas de demostración
+Repositorio: https://github.com/AbelRamos16/ENTRA-Admin-MVC
 
-Los diez perfiles `demo_` tienen retratos ficticios generados con imagegen (herramienta integrada), asignados por usuario en `src/views/artist-art.ts`. El atlas está en `public/art/entra-artists-atlas.png`; CSS selecciona cada retrato para la portada y el avatar. No se atribuyen retratos inventados a cuentas reales. Esas cuentas conservan una portada de ENTRA y su inicial hasta disponer de una foto propia.
+Vercel usa Express, raíz del repositorio y Node 24. `vercel.json` incluye los scripts del cliente e instala las dependencias de compilación. Las migraciones deben aplicarse antes de desplegar una versión que las requiere. La rama de producción es `main`. También se conserva `render.yaml` como alternativa de servidor.
 
-Prompt utilizado: atlas fotográfico exacto de 5 columnas y 2 filas, diez músicos adultos ficticios distintos, retratos editoriales de pecho hacia arriba, sin textos ni logos, fondo Black Pearl #04141E, luz Turquoise Sea #64DBE8 y acentos Flush Orange #FF6D04; diversidad de peinados, estilos y disciplinas musicales, rostros en la mitad superior.
+## Identidad visual
 
-## Propuestas de audio
+Black Pearl `#04141E`, Turquoise Sea `#64DBE8` y Flush Orange `#FF6D04`. Las transiciones respetan movimiento reducido, los estados tienen etiquetas y los controles conservan foco visible. Prompt de los retratos: atlas fotográfico 5 × 2, diez músicos adultos ficticios distintos, sin textos ni logos, fondo Black Pearl y luces turquesa/naranja.
 
-Aplicar `supabase/migrations/20261118_audio_proposals.sql` antes del despliegue de esta versión. Colaborar permite escuchar el hook, grabar con el micrófono o adjuntar un audio, escucharlo, escribir un mensaje y enviarlo. La grabación no mezcla el beat: usar audífonos. La bandeja Propuestas separa recibidas y enviadas; solo el destinatario puede aceptar o rechazar y solo los participantes pueden escuchar el audio. Aceptar cambia el estado de la propuesta; no mezcla pistas ni modifica el autor del proyecto.
+## Integrantes
 
-Se admiten archivos originales de hasta 10 MB y tomas de 0,5 a 60 segundos. El navegador decodifica y prepara un WAV mono PCM de 22.050 Hz antes de enviarlo (aproximadamente 2,65 MB por minuto). Así la interfaz puede aceptar originales de 10 MB sin enviarlos íntegros a una función de Vercel, cuyo cuerpo tiene un límite inferior. Se requiere un navegador con Web Audio y HTTPS para micrófono (localhost también se admite). El servidor vuelve a comprobar formato real, duración, peso y mensaje. La función SQL determina el destinatario a partir del proyecto publicado y bloquea propuestas propias o duplicadas. RLS está activa y las tablas/RPC solo están disponibles para el servidor.
-
-Verificación: 14 pruebas locales de aplicación y validación; SQL probado en PostgreSQL aislado para idempotencia, permisos, destinatario, borradores, propuestas propias y duplicadas. Micrófono físico y entrega entre dos cuentas en producción requieren verificación tras migrar y desplegar.
+Abel Ramos y Julián Pacheco · Grupo 9 · ISWZ 3101 · NRC 5489.

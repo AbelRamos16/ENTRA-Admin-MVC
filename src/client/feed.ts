@@ -170,7 +170,8 @@
       status.textContent='Cargando más ideas…';
       try {
         const cursor=new URL(link.href).searchParams.get('cursor')!;
-        const response=await fetch('/feed/page?cursor='+encodeURIComponent(cursor),{headers:{Accept:'application/json'}});
+        const requestUrl=new URL(link.href);requestUrl.pathname='/feed/page';
+        const response=await fetch(requestUrl.pathname+requestUrl.search,{headers:{Accept:'application/json'}});
         if (!response.ok || !response.headers.get('content-type')?.includes('application/json')) throw new Error();
         const page=await response.json() as {html:string;nextCursor:string|null};
         const template=document.createElement('template');template.innerHTML=page.html;
@@ -179,7 +180,7 @@
           if(!existing.has((node as HTMLElement).dataset.projectId))end.before(node);
         }
         if (page.nextCursor && page.nextCursor!==cursor) {
-          link.href='/feed?cursor='+encodeURIComponent(page.nextCursor); status.textContent='';
+          const nextUrl=new URL(link.href);nextUrl.searchParams.set('cursor',page.nextCursor);link.href=nextUrl.pathname+nextUrl.search; status.textContent='';
         } else {
           end.replaceChildren(Object.assign(document.createElement('p'),{textContent:'Ya escuchaste las últimas ideas.'}));
         }

@@ -15,7 +15,7 @@
   const proposals=dialog.querySelector<HTMLAnchorElement>('[data-proposals-link]')!;
   let recorder:MediaRecorder|null=null,stream:MediaStream|null=null,recorded:File|null=null;
   let objectUrl='',projectId='',hookStart=0,hookEnd=0,interval=0,started=0,version=0,busy=false,sending=false,requesting=false;
-  function controls(){record.disabled=busy||sending||requesting||recorder?.state==='recording';stop.disabled=recorder?.state!=='recording';fileInput.disabled=busy||sending||requesting||recorder?.state==='recording';send.disabled=!recorded||busy||sending||recorder?.state==='recording';clear.hidden=!recorded;clear.disabled=busy||sending;close.disabled=sending;draft.disabled=sending;}
+  function controls(){record.disabled=busy||sending||requesting||recorder?.state==='recording';stop.disabled=recorder?.state!=='recording';fileInput.disabled=busy||sending||requesting||recorder?.state==='recording';send.disabled=draft.value.trim().length<5||busy||sending||recorder?.state==='recording';clear.hidden=!recorded;clear.disabled=busy||sending;close.disabled=sending;draft.disabled=sending;}
   function release(){window.clearInterval(interval);stream?.getTracks().forEach(track=>track.stop());stream=null;}
   function discard(){recorded=null;preview.pause();preview.removeAttribute('src');preview.hidden=true;if(objectUrl)URL.revokeObjectURL(objectUrl);objectUrl='';fileInput.value='';controls();}
   function cleanup(){version++;if(recorder?.state==='recording')recorder.stop();recorder=null;release();reference.pause();discard();}
@@ -68,11 +68,12 @@
   stop.addEventListener('click',()=>{if(recorder?.state==='recording')recorder.stop();});
   clear.addEventListener('click',()=>{version++;discard();status.textContent='Toma descartada. Puedes grabar otra.';});
   fileInput.addEventListener('change',()=>{const file=fileInput.files?.[0];if(file)void prepare(file,++version);});
+  draft.addEventListener('input',controls);
   send.addEventListener('click',async()=>{
-   if(!recorded||sending)return;
+   if(sending)return;
    if(draft.value.trim().length<5){status.textContent='Describe tu aporte en al menos 5 caracteres.';draft.focus();return;}
    sending=true;preview.pause();reference.pause();status.textContent='Enviando tu propuesta…';controls();
-   const form=new FormData();form.set('csrf',document.querySelector<HTMLInputElement>('input[name="csrf"]')!.value);form.set('message',draft.value.trim());form.set('audio',recorded);
+   const form=new FormData();form.set('csrf',document.querySelector<HTMLInputElement>('input[name="csrf"]')!.value);form.set('message',draft.value.trim());if(recorded)form.set('audio',recorded);
    try{
     const response=await fetch('/proposals/project/'+projectId,{method:'POST',body:form,headers:{Accept:'application/json'}});
     if(!response.headers.get('content-type')?.includes('application/json'))throw new Error('La sesión terminó. Recarga la página e inicia sesión.');

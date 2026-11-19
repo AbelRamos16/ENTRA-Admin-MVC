@@ -13,12 +13,12 @@ export async function validateProposalAudio(file:File){
   return {bytes,duration,mime};
  }catch{throw new ValidationError('La propuesta debe ser un WAV o MP3 válido de 0,5 a 60 segundos.');}
 }
-export type Proposal={id:number;project_id:number;applicant_id:string;recipient_id:string;message:string;audio_mime:string;audio_duration:number;status:'pending'|'accepted'|'rejected';created_at:string;projects:{title:string}|null;artist_name?:string};
+export type Proposal={id:number;project_id:number;applicant_id:string;recipient_id:string;message:string;audio_mime:string|null;audio_duration:number|null;status:'pending'|'accepted'|'rejected';created_at:string;projects:{title:string}|null;artist_name?:string};
 export class ProposalModel{
- async create(project:number,user:AuthUser,message:string,file:File){
+ async create(project:number,user:AuthUser,message:string,file?:File){
   message=message.trim();if(message.length<5||message.length>1000)throw new ValidationError('Describe tu aporte en entre 5 y 1000 caracteres.');
-  const audio=await validateProposalAudio(file);
-  const {data,error}=await db.rpc('entra_submit_proposal',{p_actor:user.id,p_project:project,p_message:message,p_audio:'\\x'+Buffer.from(audio.bytes).toString('hex'),p_mime:audio.mime,p_duration:audio.duration});
+  const audio=file?await validateProposalAudio(file):null;
+  const {data,error}=await db.rpc('entra_submit_proposal',{p_actor:user.id,p_project:project,p_message:message,p_audio:audio?'\\x'+Buffer.from(audio.bytes).toString('hex'):null,p_mime:audio?.mime??null,p_duration:audio?.duration??null});
   if(error){if(['23505','22023','42501','P0002'].includes(error.code))throw new ValidationError(error.code==='23505'?'Ya enviaste una propuesta a este proyecto.':error.message);throw new Error('No se pudo guardar la propuesta. Revisa la migración de propuestas.');}
   return data as number;
  }
@@ -34,7 +34,7 @@ export class ProposalModel{
  }
  async audio(id:number,user:AuthUser){
   const {data,error}=await db.from('entra_proposals').select('audio_bytes,audio_mime').eq('id',id).or('applicant_id.eq.'+user.id+',recipient_id.eq.'+user.id).maybeSingle();
-  if(error)throw new Error('No se pudo leer la propuesta.');if(!data)return;
+  if(error)throw new Error('No se pudo leer la propuesta.');if(!data?.audio_bytes)return;
   if(typeof data.audio_bytes!=='string'||!/^\\x(?:[0-9a-f]{2})+$/i.test(data.audio_bytes))throw new Error('Audio inválido.');
   return {bytes:new Uint8Array(Buffer.from(data.audio_bytes.slice(2),'hex')),mime:data.audio_mime as string};
  }
