@@ -21,6 +21,7 @@ export function layout(content: string, token: string, section = 'projects', rol
 
       <nav class="masthead__nav" aria-label="Principal"><a class="masthead__link ${section === 'feed' ? 'masthead__link--active' : ''}" href="/feed">Descubrir</a>
         <a class="masthead__link ${section === 'projects' ? 'masthead__link--active' : ''}" href="/projects">Mis proyectos</a>
+        <a class="masthead__link ${section === 'proposals' ? 'masthead__link--active' : ''}" href="/proposals">Propuestas</a>
         ${role === 'superadmin' ? `<a class="masthead__link ${section === 'admin' ? 'masthead__link--active' : ''}" href="/admin">Administración</a>` : ''}
         <a class="masthead__create" href="/projects/new">
           ${icon}

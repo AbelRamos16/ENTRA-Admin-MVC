@@ -6,7 +6,7 @@ ENTRA conecta ideas musicales con lo que les falta para avanzar. Los artistas or
 
 ## Descubrir y publicar
 
-El inicio después del Login es `/feed`: una publicación por pantalla, desplazamiento vertical con ajuste por tarjeta y hook en bucle. Cada publicación muestra título, nombre público del artista, usuario, género, BPM y colaboración buscada. En computadora hay flechas; el teclado admite ↑/↓ y espacio para reproducir/pausar.
+El inicio después del Login es `/feed`: un carrusel horizontal con tarjeta central destacada y hook en bucle. Cada publicación muestra título, nombre público del artista, usuario, género, BPM y colaboración buscada. En computadora hay flechas; el teclado admite ↑/↓ y espacio para reproducir/pausar.
 
 El sonido empieza con un toque. Después, cambiar de tarjeta pausa la anterior y reproduce el hook activo. Cambiar de pestaña o salir detiene el audio. Se respeta movimiento reducido. El feed carga 8 registros por página mediante cursor de fecha e ID y no incluye archivos binarios en su listado.
 
@@ -141,3 +141,44 @@ También se conserva `render.yaml` como alternativa de servidor. No se requieren
 ## Integrantes
 
 Abel Ramos y Julián Pacheco · Grupo 9 · ISWZ 3101 · NRC 5489
+
+## Datos de demostración del feed
+
+Se cargaron 10 artistas ficticios y 20 publicaciones (dos por artista), con biografías, títulos, descripción, BPM, tonalidad, referencias a catálogos y hooks válidos. Cada MP3 contiene una instrumental sintética original de 16 segundos. Las cuentas se identifican con `demo_` y las descripciones indican su carácter de demostración.
+
+La carga se verificó en Supabase: las 20 publicaciones están publicadas y disponibles en el feed. También se comprobó en el sitio público la reproducción de un hook y la navegación a la siguiente publicación.
+
+Para reproducir la carga en una base configurada con las migraciones, se requiere Node 24 y FFmpeg (con libmp3lame):
+
+```powershell
+node scripts/seed-demo.mjs --dry-run
+node scripts/seed-demo.mjs --env-file .env --project-ref TU_PROJECT_REF --ffmpeg-path ffmpeg
+```
+
+El script comprueba el proyecto de destino, valida los datos mediante los modelos del servidor y reutiliza los registros de su propia carga para evitar duplicados. No reemplaza cuentas reales. Guarda las contraseñas aleatorias y el registro de la carga en `.demo-data/credentials.private.json`, excluido de Git; los audios generados también permanecen en esa carpeta privada. No publicar ese archivo ni el `.env`. Esta carga modifica datos directamente: no necesita un nuevo despliegue de Vercel para aparecer.
+
+## Descubrir: carrusel horizontal
+
+La vista presenta portadas con la colaboración buscada y el botón Colaborar dentro de la imagen; debajo aparecen el nombre de artista, su usuario y el reproductor del hook. Navega con gestos horizontales, rueda del ratón o flechas izquierda/derecha. La tarjeta central conserva el foco visual; las laterales usan escala y perspectiva. Se respeta la preferencia de movimiento reducido. Los perfiles de demostración usan retratos ficticios propios; las demás cuentas conservan el recurso gráfico de ENTRA.
+
+Colaborar abre el grabador y permite adjuntar, revisar y enviar una propuesta de audio; el artista recibe y revisa los aportes en Propuestas. Requiere la migración `20261118_audio_proposals.sql`. Para subir un beat: Nuevo proyecto → Demo MP3 → seleccionar archivo y hook → Guardar borrador → Publicar. La carga conserva las validaciones existentes del servidor y los límites del despliegue.
+
+Verificación del rediseño: TypeScript, 12 pruebas locales, navegación horizontal, reproducción del hook y propuesta en navegador; revisión visual a 390 × 844 y escritorio. El rediseño requiere subir los archivos y desplegar para aparecer en producción.
+
+## Paleta visual ENTRA
+
+La interfaz utiliza Black Pearl `#04141E` como fondo, Turquoise Sea `#64DBE8` para navegación, selección y foco, y Flush Orange `#FF6D04` para acciones principales. Los neutros derivados mantienen separación entre superficies y contraste del texto. El logo SVG y el isotipo conservan sus formas y adoptan naranja/turquesa. La paleta se aplica a acceso, proyectos, administración y Descubrir; conserva las preferencias de movimiento reducido.
+
+### Retratos de artistas de demostración
+
+Los diez perfiles `demo_` tienen retratos ficticios generados con imagegen (herramienta integrada), asignados por usuario en `src/views/artist-art.ts`. El atlas está en `public/art/entra-artists-atlas.png`; CSS selecciona cada retrato para la portada y el avatar. No se atribuyen retratos inventados a cuentas reales. Esas cuentas conservan una portada de ENTRA y su inicial hasta disponer de una foto propia.
+
+Prompt utilizado: atlas fotográfico exacto de 5 columnas y 2 filas, diez músicos adultos ficticios distintos, retratos editoriales de pecho hacia arriba, sin textos ni logos, fondo Black Pearl #04141E, luz Turquoise Sea #64DBE8 y acentos Flush Orange #FF6D04; diversidad de peinados, estilos y disciplinas musicales, rostros en la mitad superior.
+
+## Propuestas de audio
+
+Aplicar `supabase/migrations/20261118_audio_proposals.sql` antes del despliegue de esta versión. Colaborar permite escuchar el hook, grabar con el micrófono o adjuntar un audio, escucharlo, escribir un mensaje y enviarlo. La grabación no mezcla el beat: usar audífonos. La bandeja Propuestas separa recibidas y enviadas; solo el destinatario puede aceptar o rechazar y solo los participantes pueden escuchar el audio. Aceptar cambia el estado de la propuesta; no mezcla pistas ni modifica el autor del proyecto.
+
+Se admiten archivos originales de hasta 10 MB y tomas de 0,5 a 60 segundos. El navegador decodifica y prepara un WAV mono PCM de 22.050 Hz antes de enviarlo (aproximadamente 2,65 MB por minuto). Así la interfaz puede aceptar originales de 10 MB sin enviarlos íntegros a una función de Vercel, cuyo cuerpo tiene un límite inferior. Se requiere un navegador con Web Audio y HTTPS para micrófono (localhost también se admite). El servidor vuelve a comprobar formato real, duración, peso y mensaje. La función SQL determina el destinatario a partir del proyecto publicado y bloquea propuestas propias o duplicadas. RLS está activa y las tablas/RPC solo están disponibles para el servidor.
+
+Verificación: 14 pruebas locales de aplicación y validación; SQL probado en PostgreSQL aislado para idempotencia, permisos, destinatario, borradores, propuestas propias y duplicadas. Micrófono físico y entrega entre dos cuentas en producción requieren verificación tras migrar y desplegar.
