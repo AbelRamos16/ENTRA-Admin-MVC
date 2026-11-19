@@ -21,7 +21,7 @@ export async function communityController(req:IncomingMessage,res:ServerResponse
    const saved=path.match(/^\/library\/([1-9]\d*)\/(save|remove)$/);if(saved){await model.saveProject(id(saved[1]),user,saved[2]==='save');redirect('/library?tab=saved');return;}
    const collaboration=path.match(/^\/collaborations\/([1-9]\d*)$/);if(collaboration){await model.closeCollaboration(id(collaboration[1]),user,fields.get('status')??'');redirect('/library?tab=collaborations');return;}
    const read=path.match(/^\/notifications(?:\/([1-9]\d*))?\/read$/);if(read){await model.markRead(user,read[1]?id(read[1]):undefined);redirect('/notifications');return;}
-   const moderation=path.match(/^\/admin\/reports\/project\/([1-9]\d*)$/);if(moderation){const p=await model.moderationProject(id(moderation[1]),user);if(!p){html(res,'Proyecto no encontrado.',404);return;}html(res,moderationView(p,token));return;}
+
   const report=path.match(/^\/reports\/project\/([1-9]\d*)$/);if(report){await model.report(id(report[1]),user,fields.get('reason')??'');html(res,layout('<h1>Reporte recibido</h1><p>Administración revisará esta publicación.</p><a class="button" href="/feed">Volver a Descubrir</a>',token,'feed',user.role));return;}
    const directModerate=path.match(/^\/admin\/reports\/project\/([1-9]\d*)\/moderate$/);if(directModerate){if(!['true','false'].includes(fields.get('hidden')??''))throw new ValidationError('Acción inválida.');await model.moderate(user,id(directModerate[1]),fields.get('hidden')==='true',fields.get('reason')??'');redirect('/admin/reports?updated=1');return;}
    const moderate=path.match(/^\/admin\/reports\/([1-9]\d*)\/moderate$/);if(moderate){if(!['true','false'].includes(fields.get('hidden')??''))throw new ValidationError('Acción inválida.');await model.moderate(user,id(fields.get('projectId')??''),fields.get('hidden')==='true',fields.get('reason')??'');redirect('/admin/reports?updated=1');return;}
@@ -34,6 +34,7 @@ export async function communityController(req:IncomingMessage,res:ServerResponse
   if(path==='/notifications'){html(res,notificationsView(await model.notifications(user),token,user));return;}
   if(path==='/artists'){html(res,artistsDirectory(await model.artists(),token,user));return;}
   if(path==='/admin/reports'){html(res,reportsView(await model.reports(user),token,url.searchParams.has('updated')?'Moderación actualizada.':''));return;}
+  const moderation=path.match(/^\/admin\/reports\/project\/([1-9]\d*)$/);if(moderation){const p=await model.moderationProject(id(moderation[1]),user);if(!p){html(res,'Proyecto no encontrado.',404);return;}html(res,moderationView(p,token));return;}
   const report=path.match(/^\/reports\/project\/([1-9]\d*)$/);
   const discover=path.match(/^\/discover\/([1-9]\d*)$/);
   if(report||discover){const items=await model.publications(undefined,[id((report??discover)![1])]);const p=items[0];if(!p){html(res,'Publicación no disponible.',404);return;}html(res,report?reportView(p.id,p.title,token,user):feedView({items,nextCursor:null},token,user.id,user.role));return;}
